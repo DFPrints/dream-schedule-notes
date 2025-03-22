@@ -1,7 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Settings from '@/components/Settings';
+import { toast } from '@/components/ui/use-toast';
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState({
@@ -15,17 +16,59 @@ const SettingsPage = () => {
     language: 'en',
     keepScreenOn: true,
   });
+  
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+    } catch (error) {
+      console.error("Error loading settings from localStorage:", error);
+    }
+  }, []);
 
   // Update settings
   const updateSettings = (newSettings: any) => {
     setSettings(newSettings);
     
-    // Here you would persist settings to storage
-    // localStorage.setItem('appSettings', JSON.stringify(newSettings));
-    
-    // If dark mode was toggled, you would apply it here
+    // If dark mode was toggled, apply it
     if (newSettings.darkMode !== settings.darkMode) {
+      // Example of applying dark mode (would integrate with your theme system)
       // document.documentElement.classList.toggle('dark', newSettings.darkMode);
+      
+      toast({
+        title: newSettings.darkMode ? "Dark mode enabled" : "Light mode enabled",
+        description: "Theme preference has been updated.",
+      });
+    }
+    
+    // Apply screen wake lock if enabled
+    if (newSettings.keepScreenOn) {
+      applyScreenWakeLock();
+    }
+  };
+  
+  // Apply screen wake lock to prevent device from sleeping
+  const applyScreenWakeLock = async () => {
+    if (!('wakeLock' in navigator)) {
+      console.log('Wake Lock API not supported.');
+      return;
+    }
+    
+    try {
+      // Request a screen wake lock
+      const wakeLock = await (navigator as any).wakeLock.request('screen');
+      
+      // Listen for wake lock release
+      wakeLock.addEventListener('release', () => {
+        console.log('Screen Wake Lock released');
+      });
+      
+      console.log('Screen Wake Lock acquired');
+    } catch (error) {
+      console.error('Failed to acquire wake lock:', error);
     }
   };
 

@@ -74,6 +74,7 @@ const Calendar = ({
             components={{
               DayContent: (props) => {
                 const date = props.date;
+                const dateNumber = date.getDate(); // Get the date number (day of month)
                 const hasEvents = events.some(event => 
                   event.date.toDateString() === date.toDateString()
                 );
@@ -83,7 +84,7 @@ const Calendar = ({
                 
                 return (
                   <div className="relative w-full h-full flex items-center justify-center">
-                    <div>{props.day}</div>
+                    <div>{dateNumber}</div>
                     {hasEvents && (
                       <div className={cn(
                         "absolute -bottom-1 w-1 h-1 rounded-full",

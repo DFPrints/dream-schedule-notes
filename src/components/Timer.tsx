@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { PlayIcon, PauseIcon, StopIcon, AlertCircleIcon, MoonIcon } from 'lucide-react';
+import { PlayIcon, PauseIcon, Square as StopIcon, AlertCircleIcon, MoonIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TimerProps {

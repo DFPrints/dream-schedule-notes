@@ -78,19 +78,41 @@ const Settings = ({
     if (key === 'volume' && settings.soundEnabled) {
       playTestSound(value);
     }
+
+    // Apply language change
+    if (key === 'language') {
+      applyLanguageChange(value);
+    }
+  };
+  
+  // Apply language change
+  const applyLanguageChange = (lang: string) => {
+    const languages = {
+      en: "English",
+      es: "Spanish (Español)",
+      fr: "French (Français)",
+      de: "German (Deutsch)"
+    };
+    
+    toast({
+      title: "Language Changed",
+      description: `App language set to ${languages[lang as keyof typeof languages]}`,
+    });
+    
+    // In a real app, this would trigger i18n language change
+    // i18n.changeLanguage(lang);
+    document.documentElement.lang = lang;
   };
   
   // Apply dark mode
   const applyDarkMode = (isDark: boolean) => {
     // This would typically interact with your theme system
-    // For now, we'll just show a toast indicating the change
+    document.documentElement.classList.toggle('dark', isDark);
+    
     toast({
       title: isDark ? "Dark mode enabled" : "Light mode enabled",
       description: "Theme preference has been updated.",
     });
-    
-    // In a real implementation, you might do something like:
-    // document.documentElement.classList.toggle('dark', isDark);
   };
   
   // Play test sound
@@ -169,6 +191,23 @@ const Settings = ({
     }
   };
 
+  // Send test notification
+  const sendTestNotification = () => {
+    if (Notification.permission === "granted") {
+      new Notification("Test Notification", {
+        body: "This is a test notification from Manifest App",
+        icon: "/favicon.ico"
+      });
+      
+      toast({
+        title: "Test notification sent",
+        description: "Check your notifications to confirm they're working.",
+      });
+    } else {
+      requestNotificationPermission();
+    }
+  };
+
   // Handle save settings
   const handleSaveSettings = () => {
     const updatedSettings = {
@@ -215,6 +254,11 @@ const Settings = ({
     setSleepStart(defaultSettings.sleepHoursStart);
     setSleepEnd(defaultSettings.sleepHoursEnd);
     setTimerDuration(defaultSettings.defaultTimerDuration);
+    
+    // Apply the reset settings immediately
+    applyDarkMode(defaultSettings.darkMode);
+    applyLanguageChange(defaultSettings.language);
+    document.documentElement.classList.remove('dark');
     
     toast({
       title: "Settings reset",
@@ -313,22 +357,7 @@ const Settings = ({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => {
-                    // Show a test notification
-                    if (Notification.permission === "granted") {
-                      new Notification("Test Notification", {
-                        body: "This is a test notification from Manifest App",
-                        icon: "/favicon.ico"
-                      });
-                      
-                      toast({
-                        title: "Test notification sent",
-                        description: "Check your notifications to confirm they're working.",
-                      });
-                    } else {
-                      requestNotificationPermission();
-                    }
-                  }}
+                  onClick={sendTestNotification}
                 >
                   Test
                 </Button>

@@ -22,7 +22,23 @@ const SettingsPage = () => {
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(parsedSettings);
+        
+        // Apply dark mode if it was enabled
+        if (parsedSettings.darkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        
+        // Set language
+        document.documentElement.lang = parsedSettings.language || 'en';
+        
+        // Apply screen wake lock if enabled
+        if (parsedSettings.keepScreenOn) {
+          applyScreenWakeLock();
+        }
       }
     } catch (error) {
       console.error("Error loading settings from localStorage:", error);
@@ -35,12 +51,28 @@ const SettingsPage = () => {
     
     // If dark mode was toggled, apply it
     if (newSettings.darkMode !== settings.darkMode) {
-      // Example of applying dark mode (would integrate with your theme system)
-      // document.documentElement.classList.toggle('dark', newSettings.darkMode);
+      document.documentElement.classList.toggle('dark', newSettings.darkMode);
       
       toast({
         title: newSettings.darkMode ? "Dark mode enabled" : "Light mode enabled",
         description: "Theme preference has been updated.",
+      });
+    }
+    
+    // If language was changed
+    if (newSettings.language !== settings.language) {
+      document.documentElement.lang = newSettings.language;
+      
+      const languages: Record<string, string> = {
+        en: "English",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        de: "German (Deutsch)"
+      };
+      
+      toast({
+        title: "Language Changed",
+        description: `App language set to ${languages[newSettings.language] || newSettings.language}`,
       });
     }
     

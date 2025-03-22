@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRightIcon, TimerIcon, CalendarIcon, FeatherIcon, SparklesIcon } from 'lucide-react';
+import { ArrowRightIcon, TimerIcon, CalendarIcon, FeatherIcon, SparklesIcon, MicIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +21,7 @@ const Index = () => {
     { name: "Start Timer", icon: TimerIcon, path: "/timer", color: "bg-manifest-accent/10 text-primary" },
     { name: "View Calendar", icon: CalendarIcon, path: "/calendar", color: "bg-manifest-gold/10 text-manifest-gold" },
     { name: "Create Note", icon: FeatherIcon, path: "/notes", color: "bg-manifest-rose/10 text-rose-500" },
+    { name: "Record Voice", icon: MicIcon, path: "/voice-memo", color: "bg-purple-500/10 text-purple-500" },
   ];
 
   if (!mounted) return null;
@@ -40,7 +40,7 @@ const Index = () => {
         {/* Quick Actions */}
         <section className="pt-4">
           <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {quickActions.map((action) => (
               <Button
                 key={action.name}
@@ -128,6 +128,21 @@ const Index = () => {
                 <h3 className="font-medium">Manifestation Journal</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   Write down your intentions, gratitude, and manifestation progress
+                </p>
+              </div>
+            </div>
+            
+            <div 
+              className="glass-card p-4 rounded-lg flex items-start space-x-4 cursor-pointer"
+              onClick={() => navigate('/voice-memo')}
+            >
+              <div className="p-2 rounded-full bg-purple-500/10 text-purple-500">
+                <MicIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium">Voice Memos</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Record, edit, and save voice notes for your manifestation practice
                 </p>
               </div>
             </div>

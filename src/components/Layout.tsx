@@ -1,6 +1,6 @@
 
 import { useLocation, Link } from 'react-router-dom';
-import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon } from 'lucide-react';
+import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,7 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Timer', path: '/timer', icon: TimerIcon },
     { name: 'Calendar', path: '/calendar', icon: CalendarIcon },
     { name: 'Notes', path: '/notes', icon: FileTextIcon },
+    { name: 'Voice', path: '/voice-memo', icon: MicIcon },
     { name: 'Settings', path: '/settings', icon: SettingsIcon },
   ];
 

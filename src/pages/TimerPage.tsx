@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Timer from '@/components/Timer';
@@ -19,11 +18,14 @@ import {
   InfoIcon,
   Clock12 as Clock12Icon,
   Clock as Clock24Icon,
+  TimerIcon,
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TimerInputFix } from '@/components/TimerInputFix';
+import { StopwatchComponent } from '@/components/StopwatchComponent';
 
 interface TimerPreset {
   id: string;
@@ -89,8 +91,8 @@ const TimerPage = () => {
   const [sleepHoursEnd, setSleepHoursEnd] = useState('07:00');
   const [showSleepSettings, setShowSleepSettings] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
+  const [showStopwatch, setShowStopwatch] = useState(false);
 
-  // Load settings from localStorage
   useEffect(() => {
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
@@ -105,13 +107,15 @@ const TimerPage = () => {
         if (parsedSettings.is24Hour !== undefined) {
           setIs24Hour(parsedSettings.is24Hour);
         }
+        if (parsedSettings.showStopwatch !== undefined) {
+          setShowStopwatch(parsedSettings.showStopwatch);
+        }
       }
     } catch (error) {
       console.error("Error loading settings from localStorage:", error);
     }
   }, []);
 
-  // Format time string based on 12/24 hour setting
   const formatTimeString = (timeString: string) => {
     if (!timeString) return "";
     if (is24Hour) return timeString;
@@ -122,7 +126,6 @@ const TimerPage = () => {
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
-  // Save settings to localStorage
   const saveSleepHours = () => {
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
@@ -145,11 +148,9 @@ const TimerPage = () => {
     }
   };
 
-  // Toggle 12/24 hour format
   const toggle24HourFormat = () => {
     setIs24Hour(!is24Hour);
     
-    // Save the setting without closing the dialog
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
       const settingsObj = savedSettings ? JSON.parse(savedSettings) : {};
@@ -160,7 +161,6 @@ const TimerPage = () => {
     }
   };
 
-  // Handle timer completion
   const handleTimerComplete = () => {
     toast({
       title: "Timer Complete",
@@ -170,7 +170,6 @@ const TimerPage = () => {
     });
   };
 
-  // Start a preset timer
   const startPresetTimer = (preset: TimerPreset) => {
     setActiveTimer(preset);
     toast({
@@ -179,10 +178,8 @@ const TimerPage = () => {
     });
   };
 
-  // Toggle day selection
   const toggleDay = (day: string) => {
     if (newPresetDays.includes(day)) {
-      // Don't allow removing the last day
       if (newPresetDays.length > 1) {
         setNewPresetDays(newPresetDays.filter(d => d !== day));
       }
@@ -191,7 +188,6 @@ const TimerPage = () => {
     }
   };
 
-  // Add a new preset
   const addNewPreset = () => {
     if (!newPresetName.trim()) {
       toast({
@@ -226,16 +222,13 @@ const TimerPage = () => {
     });
   };
 
-  // Delete a preset
   const deletePreset = (e: React.MouseEvent, presetId: string) => {
     e.stopPropagation();
     
-    // If this is the active timer, cancel it
     if (activeTimer?.id === presetId) {
       setActiveTimer(null);
     }
     
-    // Remove the preset
     setPresets(presets.filter(preset => preset.id !== presetId));
     
     toast({
@@ -244,7 +237,6 @@ const TimerPage = () => {
     });
   };
 
-  // Save a preset from the timer
   const handleSavePreset = (preset: Omit<TimerPreset, 'id'>) => {
     const newPreset: TimerPreset = {
       ...preset,
@@ -262,7 +254,6 @@ const TimerPage = () => {
   return (
     <Layout>
       <div className="space-y-8 pb-20">
-        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-medium">Timer</h1>
@@ -313,10 +304,30 @@ const TimerPage = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setShowStopwatch(!showStopwatch)}
+                    className={cn(
+                      "rounded-full", 
+                      showStopwatch && "border-primary text-primary"
+                    )}
+                  >
+                    <TimerIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Toggle Stopwatch</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
-        {/* Sleep Hours Settings */}
         {showSleepSettings && (
           <Card className="neo-morphism border-0 animate-scale-in">
             <CardHeader className="pb-2">
@@ -374,76 +385,87 @@ const TimerPage = () => {
           </Card>
         )}
 
-        {/* Active Timer */}
-        <div className="flex flex-col items-center pt-4">
-          {activeTimer ? (
-            <>
-              <h2 className="text-lg font-medium mb-6">
-                {activeTimer.name}
-                <div className="flex gap-1 mt-1">
-                  {activeTimer.pauseDuringSleep && (
-                    <Badge variant="outline" className="text-xs flex items-center">
-                      <MoonIcon className="h-3 w-3 mr-1" />
-                      Sleep-Aware
-                    </Badge>
-                  )}
-                  {activeTimer.repeatInterval && (
-                    <Badge variant="outline" className="text-xs">
-                      <RepeatIcon className="h-3 w-3 mr-1" />
-                      Every {activeTimer.repeatInterval}m
-                    </Badge>
-                  )}
-                  {activeTimer.activeDays && activeTimer.activeDays.length < 7 && (
-                    <Badge variant="outline" className="text-xs">
-                      <CalendarIcon className="h-3 w-3 mr-1" />
-                      {activeTimer.activeDays.length} days
-                    </Badge>
-                  )}
-                </div>
-              </h2>
+        {showStopwatch && (
+          <Card className="neo-morphism border-0 animate-scale-in">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <TimerIcon className="h-5 w-5 mr-2 text-primary" />
+                Stopwatch
+                <span className="ml-auto text-xs text-muted-foreground">Time elapsed</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StopwatchComponent />
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTimer ? (
+          <>
+            <h2 className="text-lg font-medium mb-6">
+              {activeTimer.name}
+              <div className="flex gap-1 mt-1">
+                {activeTimer.pauseDuringSleep && (
+                  <Badge variant="outline" className="text-xs flex items-center">
+                    <MoonIcon className="h-3 w-3 mr-1" />
+                    Sleep-Aware
+                  </Badge>
+                )}
+                {activeTimer.repeatInterval && (
+                  <Badge variant="outline" className="text-xs">
+                    <RepeatIcon className="h-3 w-3 mr-1" />
+                    Every {activeTimer.repeatInterval}m
+                  </Badge>
+                )}
+                {activeTimer.activeDays && activeTimer.activeDays.length < 7 && (
+                  <Badge variant="outline" className="text-xs">
+                    <CalendarIcon className="h-3 w-3 mr-1" />
+                    {activeTimer.activeDays.length} days
+                  </Badge>
+                )}
+              </div>
+            </h2>
+            <Timer 
+              defaultMinutes={activeTimer.minutes} 
+              pauseWhenSleeping={activeTimer.pauseDuringSleep}
+              onComplete={handleTimerComplete}
+              repeatInterval={activeTimer.repeatInterval}
+              activeDays={activeTimer.activeDays}
+              manualDuration={false}
+              sleepHoursStart={sleepHoursStart}
+              sleepHoursEnd={sleepHoursEnd}
+              is24Hour={is24Hour}
+            />
+            <Button
+              variant="ghost"
+              className="mt-8"
+              onClick={() => setActiveTimer(null)}
+            >
+              <TimerOffIcon className="h-4 w-4 mr-2" />
+              Cancel Timer
+            </Button>
+          </>
+        ) : (
+          <Card className="w-full max-w-md neo-morphism border-0">
+            <CardContent className="p-6 text-center">
+              <ClockIcon className="h-12 w-12 mx-auto text-primary/50 mb-4" />
+              <h3 className="text-lg font-medium">No Active Timer</h3>
+              <p className="text-muted-foreground mt-1 mb-4">
+                Select a preset or create a new timer
+              </p>
               <Timer 
-                defaultMinutes={activeTimer.minutes} 
-                pauseWhenSleeping={activeTimer.pauseDuringSleep}
+                defaultMinutes={20} 
                 onComplete={handleTimerComplete}
-                repeatInterval={activeTimer.repeatInterval}
-                activeDays={activeTimer.activeDays}
-                manualDuration={false}
+                manualDuration={true}
                 sleepHoursStart={sleepHoursStart}
                 sleepHoursEnd={sleepHoursEnd}
                 is24Hour={is24Hour}
+                onSavePreset={handleSavePreset}
               />
-              <Button
-                variant="ghost"
-                className="mt-8"
-                onClick={() => setActiveTimer(null)}
-              >
-                <TimerOffIcon className="h-4 w-4 mr-2" />
-                Cancel Timer
-              </Button>
-            </>
-          ) : (
-            <Card className="w-full max-w-md neo-morphism border-0">
-              <CardContent className="p-6 text-center">
-                <ClockIcon className="h-12 w-12 mx-auto text-primary/50 mb-4" />
-                <h3 className="text-lg font-medium">No Active Timer</h3>
-                <p className="text-muted-foreground mt-1 mb-4">
-                  Select a preset or create a new timer
-                </p>
-                <Timer 
-                  defaultMinutes={20} 
-                  onComplete={handleTimerComplete}
-                  manualDuration={true}
-                  sleepHoursStart={sleepHoursStart}
-                  sleepHoursEnd={sleepHoursEnd}
-                  is24Hour={is24Hour}
-                  onSavePreset={handleSavePreset}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Timer Presets */}
         <div className="pt-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-medium">Presets</h2>
@@ -457,7 +479,6 @@ const TimerPage = () => {
             </Button>
           </div>
 
-          {/* Add new preset form */}
           {isAddingPreset && (
             <Card className="mb-4 animate-scale-in neo-morphism border-0">
               <CardContent className="pt-4">
@@ -557,7 +578,6 @@ const TimerPage = () => {
             </Card>
           )}
 
-          {/* Preset list */}
           <div className="grid gap-3">
             {presets.map((preset) => (
               <div 

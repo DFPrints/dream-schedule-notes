@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -18,6 +18,11 @@ export const TimerInputFix = ({
 }: TimerInputFixProps) => {
   const [inputValue, setInputValue] = useState(initialValue.toString());
   const timeoutRef = useRef<number | null>(null);
+  
+  // Update local state when initialValue changes from parent
+  useEffect(() => {
+    setInputValue(initialValue.toString());
+  }, [initialValue]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Always update the displayed value immediately
@@ -43,6 +48,15 @@ export const TimerInputFix = ({
       onChange(numValue);
     }, 500); // Wait for user to finish typing
   };
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
   
   return (
     <div>

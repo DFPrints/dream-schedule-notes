@@ -17,8 +17,8 @@ import {
   RepeatIcon,
   MoonIcon,
   InfoIcon,
-  Clock12Icon,
-  Clock24Icon,
+  Clock12 as Clock12Icon,
+  Clock as Clock24Icon,
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';

@@ -413,6 +413,37 @@ const Timer = ({
 
   const progressPercent = ((timeSetting * 60 - timeLeft) / (timeSetting * 60)) * 100;
 
+  const handleSavePreset = () => {
+    if (!presetName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please provide a name for your preset.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const totalSeconds = (manualHours * 3600) + (manualMinutes * 60) + manualSeconds;
+    const minutesEquivalent = Math.ceil(totalSeconds / 60);
+    
+    const preset = {
+      name: presetName,
+      minutes: isManualDuration ? minutesEquivalent : timeSetting,
+      pauseDuringSleep: isPauseDuringSleep,
+      repeatInterval: isRepeating ? repeatEvery : undefined,
+      activeDays: selectedDays
+    };
+    
+    onSavePreset?.(preset);
+    setShowSavePreset(false);
+    setPresetName("");
+    
+    toast({
+      title: "Preset Saved",
+      description: `"${presetName}" preset has been created.`,
+    });
+  };
+
   return (
     <div className="flex flex-col items-center">
       <div 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -7,7 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { BellIcon, MoonIcon, SunIcon, VolumeIcon, TimerIcon, PhoneIcon, SaveIcon, BedIcon, LanguagesIcon, Clock24Icon } from 'lucide-react';
+import { BellIcon, MoonIcon, SunIcon, VolumeIcon, TimerIcon, PhoneIcon, SaveIcon, BedIcon, LanguagesIcon, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface SettingsProps {
@@ -47,7 +46,6 @@ const Settings = ({
   const [timerDuration, setTimerDuration] = useState(initialSettings.defaultTimerDuration);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Format time string based on 12/24 hour setting
   const formatTimeString = (timeString: string) => {
     if (!timeString) return "";
     if (settings.is24Hour) return timeString;
@@ -58,7 +56,6 @@ const Settings = ({
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
-  // Track changes to enable/disable save button
   useEffect(() => {
     const settingsChanged = JSON.stringify({
       ...settings,
@@ -70,35 +67,29 @@ const Settings = ({
     setHasChanges(settingsChanged);
   }, [settings, sleepStart, sleepEnd, timerDuration, initialSettings]);
 
-  // Handle settings change
   const handleSettingChange = (key: string, value: any) => {
     setSettings({
       ...settings,
       [key]: value
     });
     
-    // Apply dark mode changes immediately for better user experience
     if (key === 'darkMode') {
       applyDarkMode(value);
     }
     
-    // Play a test sound if sound is enabled
     if (key === 'soundEnabled' && value === true) {
       playTestSound(settings.volume);
     }
     
-    // Play test sound when volume changes
     if (key === 'volume' && settings.soundEnabled) {
       playTestSound(value);
     }
 
-    // Apply language change
     if (key === 'language') {
       applyLanguageChange(value);
     }
   };
-  
-  // Apply language change
+
   const applyLanguageChange = (lang: string) => {
     const languages = {
       en: "English",
@@ -112,14 +103,11 @@ const Settings = ({
       description: `App language set to ${languages[lang as keyof typeof languages]}`,
     });
     
-    // In a real app, this would trigger i18n language change
-    // i18n.changeLanguage(lang);
+    applyDarkMode(settings.darkMode);
     document.documentElement.lang = lang;
   };
-  
-  // Apply dark mode
+
   const applyDarkMode = (isDark: boolean) => {
-    // This would typically interact with your theme system
     document.documentElement.classList.toggle('dark', isDark);
     
     toast({
@@ -127,19 +115,16 @@ const Settings = ({
       description: "Theme preference has been updated.",
     });
   };
-  
-  // Play test sound
+
   const playTestSound = (volume: number) => {
     try {
-      // Create a simple sound
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
-      
-      gainNode.gain.setValueAtTime(volume / 100 * 0.1, audioContext.currentTime); // Adjust volume
+      oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(volume / 100 * 0.1, audioContext.currentTime);
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
@@ -147,13 +132,12 @@ const Settings = ({
       oscillator.start();
       setTimeout(() => {
         oscillator.stop();
-      }, 200); // Short beep
+      }, 200);
     } catch (error) {
       console.error("Could not play test sound:", error);
     }
   };
-  
-  // Request notification permission
+
   const requestNotificationPermission = async () => {
     if (!("Notification" in window)) {
       toast({
@@ -181,7 +165,6 @@ const Settings = ({
           description: "You'll now receive notifications for timers and events.",
         });
         
-        // Show a test notification
         new Notification("Manifest App", {
           body: "Notifications are now enabled!",
           icon: "/favicon.ico"
@@ -204,7 +187,6 @@ const Settings = ({
     }
   };
 
-  // Send test notification
   const sendTestNotification = () => {
     if (Notification.permission === "granted") {
       new Notification("Test Notification", {
@@ -221,7 +203,6 @@ const Settings = ({
     }
   };
 
-  // Handle save settings
   const handleSaveSettings = () => {
     const updatedSettings = {
       ...settings,
@@ -230,17 +211,14 @@ const Settings = ({
       defaultTimerDuration: timerDuration
     };
     
-    // Try to save to localStorage for persistence
     try {
       localStorage.setItem('manifestAppSettings', JSON.stringify(updatedSettings));
     } catch (error) {
       console.error("Could not save settings to localStorage:", error);
     }
     
-    // Call the parent component's update function
     onUpdateSettings?.(updatedSettings);
     
-    // Reset the changes flag
     setHasChanges(false);
     
     toast({
@@ -249,7 +227,6 @@ const Settings = ({
     });
   };
 
-  // Reset settings to defaults
   const resetSettings = () => {
     const defaultSettings = {
       darkMode: false,
@@ -269,7 +246,6 @@ const Settings = ({
     setSleepEnd(defaultSettings.sleepHoursEnd);
     setTimerDuration(defaultSettings.defaultTimerDuration);
     
-    // Apply the reset settings immediately
     applyDarkMode(defaultSettings.darkMode);
     applyLanguageChange(defaultSettings.language);
     document.documentElement.classList.remove('dark');
@@ -339,7 +315,7 @@ const Settings = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-full bg-primary/10">
-                <Clock24Icon className="h-4 w-4 text-primary" />
+                <Clock className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <Label>Time Format</Label>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -20,11 +21,13 @@ import {
   Clock12,
   Vibrate,
   PlayCircle,
-  EyeOffIcon,
-  StopwatchIcon
+  EyeOffIcon
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { StopwatchComponent } from './StopwatchComponent';
+
+// Use TimerIcon as a replacement for StopwatchIcon
+const StopwatchIcon = TimerIcon;
 
 interface SettingsProps {
   settings?: {

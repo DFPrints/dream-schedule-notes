@@ -11,7 +11,8 @@ import {
   AlertCircleIcon, 
   MoonIcon, 
   RepeatIcon,
-  CalendarIcon
+  CalendarIcon,
+  AlarmClockIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -25,6 +26,8 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { toast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimerProps {
   defaultMinutes?: number;
@@ -33,6 +36,8 @@ interface TimerProps {
   repeatInterval?: number; // minutes between repeats
   activeDays?: string[]; // days the timer should be active
   manualDuration?: boolean; // allow manual duration input
+  sleepHoursStart?: string; // start of sleep hours (e.g. "22:00")
+  sleepHoursEnd?: string; // end of sleep hours (e.g. "06:00")
 }
 
 const daysOfWeek = [
@@ -51,7 +56,9 @@ const Timer = ({
   onComplete,
   repeatInterval = 0,
   activeDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
-  manualDuration = false
+  manualDuration = false,
+  sleepHoursStart = "22:00",
+  sleepHoursEnd = "06:00"
 }: TimerProps) => {
   const [timeLeft, setTimeLeft] = useState(defaultMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -66,9 +73,11 @@ const Timer = ({
   const [manualHours, setManualHours] = useState(0);
   const [manualMinutes, setManualMinutes] = useState(defaultMinutes);
   const [manualSeconds, setManualSeconds] = useState(0);
+  const [isSleepTime, setIsSleepTime] = useState(false);
   
   const intervalRef = useRef<number | null>(null);
   const repeatTimeoutRef = useRef<number | null>(null);
+  const sleepCheckIntervalRef = useRef<number | null>(null);
 
   // Check if timer should be active today
   const isActiveToday = () => {
@@ -89,7 +98,80 @@ const Timer = ({
     return `${formattedHrs}${formattedMins}${formattedSecs}`;
   };
 
-  // Handle visibility change to pause timer when tab is not visible (simulating sleep detection)
+  // Check if current time is within sleep hours
+  const checkIfSleepTime = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeMinutes = currentHour * 60 + currentMinute;
+    
+    // Parse sleep hours
+    const [sleepStartHour, sleepStartMinute] = sleepHoursStart.split(':').map(Number);
+    const [sleepEndHour, sleepEndMinute] = sleepHoursEnd.split(':').map(Number);
+    
+    const sleepStartMinutes = sleepStartHour * 60 + sleepStartMinute;
+    const sleepEndMinutes = sleepEndHour * 60 + sleepEndMinute;
+    
+    // Check if current time is within sleep hours
+    // Sleep hours can span across midnight
+    if (sleepStartMinutes > sleepEndMinutes) {
+      // Sleep period crosses midnight
+      return currentTimeMinutes >= sleepStartMinutes || currentTimeMinutes <= sleepEndMinutes;
+    } else {
+      // Sleep period within same day
+      return currentTimeMinutes >= sleepStartMinutes && currentTimeMinutes <= sleepEndMinutes;
+    }
+  };
+
+  // Start sleep time checking interval
+  useEffect(() => {
+    if (isPauseDuringSleep && isRunning) {
+      // Check immediately when timer starts
+      const isSleeping = checkIfSleepTime();
+      setIsSleepTime(isSleeping);
+      
+      if (isSleeping) {
+        pauseTimer();
+        toast({
+          title: "Timer Paused",
+          description: "Timer paused during sleep hours",
+        });
+      } else {
+        startTimerInterval();
+      }
+      
+      // Setup interval to check sleep time every minute
+      sleepCheckIntervalRef.current = window.setInterval(() => {
+        const nowSleeping = checkIfSleepTime();
+        setIsSleepTime(nowSleeping);
+        
+        if (nowSleeping && !isSleepTime && isRunning) {
+          // Just entered sleep time
+          pauseTimer();
+          toast({
+            title: "Timer Paused",
+            description: "Timer paused during sleep hours",
+          });
+        } else if (!nowSleeping && isSleepTime && !isRunning && intervalRef.current === null) {
+          // Just exited sleep time
+          setIsRunning(true);
+          startTimerInterval();
+          toast({
+            title: "Timer Resumed",
+            description: "Sleep hours ended, timer resumed",
+          });
+        }
+      }, 60000); // Check every minute
+      
+      return () => {
+        if (sleepCheckIntervalRef.current) {
+          clearInterval(sleepCheckIntervalRef.current);
+        }
+      };
+    }
+  }, [isPauseDuringSleep, isRunning, sleepHoursStart, sleepHoursEnd]);
+
+  // Handle visibility change to pause timer when tab is not visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (isPauseDuringSleep && isRunning) {
@@ -97,7 +179,7 @@ const Timer = ({
           clearInterval(intervalRef.current!);
           intervalRef.current = null;
         } else {
-          startTimer();
+          startTimerInterval();
         }
       }
     };
@@ -126,11 +208,18 @@ const Timer = ({
         
         // Schedule the next timer
         repeatTimeoutRef.current = window.setTimeout(() => {
-          // Only start if it's an active day
+          // Only start if it's an active day and not sleep time (if enabled)
           if (isActiveToday()) {
-            setTimeLeft(timeSetting * 60);
-            setIsRunning(true);
-            startTimer();
+            if (isPauseDuringSleep && checkIfSleepTime()) {
+              toast({
+                title: "Timer Delayed",
+                description: "Timer will start after sleep hours"
+              });
+            } else {
+              setTimeLeft(timeSetting * 60);
+              setIsRunning(true);
+              startTimerInterval();
+            }
           } else {
             toast({
               title: "Timer Skipped",
@@ -147,11 +236,19 @@ const Timer = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (repeatTimeoutRef.current) clearTimeout(repeatTimeoutRef.current);
+      if (sleepCheckIntervalRef.current) clearInterval(sleepCheckIntervalRef.current);
     };
   }, []);
 
-  // Start timer function
-  const startTimer = () => {
+  // Pause timer
+  const pauseTimer = () => {
+    clearInterval(intervalRef.current!);
+    intervalRef.current = null;
+    setIsRunning(false);
+  };
+
+  // Start timer interval
+  const startTimerInterval = () => {
     if (intervalRef.current !== null) return;
     
     intervalRef.current = window.setInterval(() => {
@@ -178,16 +275,25 @@ const Timer = ({
       return;
     }
     
+    // Check for sleep time
+    if (!isRunning && isPauseDuringSleep && checkIfSleepTime()) {
+      setIsSleepTime(true);
+      toast({
+        title: "Timer Not Started",
+        description: "Cannot start timer during sleep hours",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (isRunning) {
-      clearInterval(intervalRef.current!);
-      intervalRef.current = null;
-      setIsRunning(false);
+      pauseTimer();
     } else {
       if (timeLeft === 0) {
         // Reset timer if it's completed
         setTimeLeft(timeSetting * 60);
       }
-      startTimer();
+      startTimerInterval();
       setIsRunning(true);
     }
   };
@@ -273,7 +379,10 @@ const Timer = ({
     <div className="flex flex-col items-center">
       {/* Timer Circle */}
       <div 
-        className="relative w-64 h-64 rounded-full mb-8 cursor-pointer neo-morphism flex items-center justify-center"
+        className={cn(
+          "relative w-64 h-64 rounded-full mb-8 cursor-pointer neo-morphism flex items-center justify-center",
+          isSleepTime && isPauseDuringSleep && "bg-muted/30"
+        )}
         onClick={toggleEdit}
       >
         {/* Progress Ring */}
@@ -295,7 +404,10 @@ const Timer = ({
             strokeWidth="8"
             fill="none"
             strokeLinecap="round"
-            className="text-primary transition-all duration-1000 ease-out-expo"
+            className={cn(
+              "text-primary transition-all duration-1000 ease-out-expo",
+              isSleepTime && isPauseDuringSleep && "text-muted"
+            )}
             style={{
               strokeDasharray: 2 * Math.PI * 120,
               strokeDashoffset: 2 * Math.PI * 120 * (1 - progressPercent / 100),
@@ -386,12 +498,25 @@ const Timer = ({
             <div className="flex flex-col items-center">
               <span className="text-5xl font-light tracking-tighter">{formatTime(timeLeft)}</span>
               <span className="text-sm text-muted-foreground mt-2">
-                {isRunning ? "Running" : timeLeft === 0 ? `Completed ${completionCount > 1 ? `(${completionCount}×)` : ''}` : "Ready"}
+                {isSleepTime && isPauseDuringSleep ? (
+                  <span className="flex items-center">
+                    <MoonIcon className="h-3 w-3 mr-1" />
+                    Paused (Sleep Hours)
+                  </span>
+                ) : (
+                  isRunning ? "Running" : timeLeft === 0 ? `Completed ${completionCount > 1 ? `(${completionCount}×)` : ''}` : "Ready"
+                )}
               </span>
               {isRepeating && repeatEvery > 0 && (
                 <div className="flex items-center text-xs text-primary/70 mt-1">
                   <RepeatIcon className="h-3 w-3 mr-1" />
                   <span>Every {repeatEvery} {repeatEvery === 1 ? 'minute' : 'minutes'}</span>
+                </div>
+              )}
+              {isPauseDuringSleep && (
+                <div className="flex items-center text-xs text-primary/70 mt-1">
+                  <MoonIcon className="h-3 w-3 mr-1" />
+                  <span>Pauses {sleepHoursStart}-{sleepHoursEnd}</span>
                 </div>
               )}
             </div>
@@ -434,9 +559,11 @@ const Timer = ({
           variant={isRunning ? "secondary" : "default"}
           className={cn(
             "w-16 h-16 rounded-full shadow-md transition-transform duration-300",
-            isRunning ? "bg-accent" : "bg-primary"
+            isRunning ? "bg-accent" : "bg-primary", 
+            (isPauseDuringSleep && isSleepTime) && "opacity-50 cursor-not-allowed"
           )}
           onClick={toggleTimer}
+          disabled={isPauseDuringSleep && isSleepTime}
         >
           {isRunning ? (
             <PauseIcon className="h-6 w-6" />
@@ -445,24 +572,33 @@ const Timer = ({
           )}
         </Button>
         
-        <div className="w-12 h-12 flex items-center justify-center">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="sleep-mode"
-              checked={isPauseDuringSleep}
-              onCheckedChange={setIsPauseDuringSleep}
-            />
-            <Label htmlFor="sleep-mode" className="sr-only">
-              Pause during sleep
-            </Label>
-            <MoonIcon 
-              className={cn(
-                "h-5 w-5 transition-colors", 
-                isPauseDuringSleep ? "text-primary" : "text-muted-foreground"
-              )} 
-            />
-          </div>
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="w-12 h-12 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="sleep-mode"
+                    checked={isPauseDuringSleep}
+                    onCheckedChange={setIsPauseDuringSleep}
+                  />
+                  <Label htmlFor="sleep-mode" className="sr-only">
+                    Pause during sleep
+                  </Label>
+                  <MoonIcon 
+                    className={cn(
+                      "h-5 w-5 transition-colors", 
+                      isPauseDuringSleep ? "text-primary" : "text-muted-foreground"
+                    )} 
+                  />
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Pause during sleep hours ({sleepHoursStart}-{sleepHoursEnd})</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       
       {/* Repeat Option */}
@@ -499,7 +635,7 @@ const Timer = ({
         <div className="flex items-start mt-4 max-w-xs text-center">
           <AlertCircleIcon className="h-4 w-4 text-muted-foreground mr-2 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Timer will automatically pause when the app is in the background or your device is sleeping
+            Timer will automatically pause during sleep hours ({sleepHoursStart} - {sleepHoursEnd}) and when the app is in the background
           </p>
         </div>
       )}

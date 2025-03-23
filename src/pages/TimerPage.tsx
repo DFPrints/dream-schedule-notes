@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Timer from '@/components/Timer';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,11 +14,14 @@ import {
   TimerOffIcon, 
   Bell, 
   CalendarIcon,
-  RepeatIcon
+  RepeatIcon,
+  MoonIcon,
+  InfoIcon
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimerPreset {
   id: string;
@@ -80,6 +83,49 @@ const TimerPage = () => {
   const [newPresetRepeatInterval, setNewPresetRepeatInterval] = useState(60);
   const [newPresetDays, setNewPresetDays] = useState(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
   const [isAddingPreset, setIsAddingPreset] = useState(false);
+  const [sleepHoursStart, setSleepHoursStart] = useState('22:00');
+  const [sleepHoursEnd, setSleepHoursEnd] = useState('07:00');
+  const [showSleepSettings, setShowSleepSettings] = useState(false);
+
+  // Load sleep hours from localStorage
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        if (parsedSettings.sleepHoursStart) {
+          setSleepHoursStart(parsedSettings.sleepHoursStart);
+        }
+        if (parsedSettings.sleepHoursEnd) {
+          setSleepHoursEnd(parsedSettings.sleepHoursEnd);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading settings from localStorage:", error);
+    }
+  }, []);
+
+  // Save sleep hours to localStorage
+  const saveSleepHours = () => {
+    try {
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      const settingsObj = savedSettings ? JSON.parse(savedSettings) : {};
+      
+      settingsObj.sleepHoursStart = sleepHoursStart;
+      settingsObj.sleepHoursEnd = sleepHoursEnd;
+      
+      localStorage.setItem('manifestAppSettings', JSON.stringify(settingsObj));
+      
+      toast({
+        title: "Sleep Hours Saved",
+        description: `Sleep hours set from ${sleepHoursStart} to ${sleepHoursEnd}.`,
+      });
+      
+      setShowSleepSettings(false);
+    } catch (error) {
+      console.error("Error saving settings to localStorage:", error);
+    }
+  };
 
   // Handle timer completion
   const handleTimerComplete = () => {
@@ -147,16 +193,100 @@ const TimerPage = () => {
     });
   };
 
+  // Delete a preset
+  const deletePreset = (e: React.MouseEvent, presetId: string) => {
+    e.stopPropagation();
+    
+    // If this is the active timer, cancel it
+    if (activeTimer?.id === presetId) {
+      setActiveTimer(null);
+    }
+    
+    // Remove the preset
+    setPresets(presets.filter(preset => preset.id !== presetId));
+    
+    toast({
+      title: "Preset Deleted",
+      description: "Timer preset has been removed.",
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-8 pb-20">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-medium">Timer</h1>
-          <p className="text-muted-foreground">
-            Set timers for your manifestation practice
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-medium">Timer</h1>
+            <p className="text-muted-foreground">
+              Set timers for your manifestation practice
+            </p>
+          </div>
+          <div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setShowSleepSettings(!showSleepSettings)}
+                    className={cn(
+                      "rounded-full", 
+                      showSleepSettings && "border-primary text-primary"
+                    )}
+                  >
+                    <MoonIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Sleep Hours Settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
+
+        {/* Sleep Hours Settings */}
+        {showSleepSettings && (
+          <Card className="neo-morphism border-0 animate-scale-in">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <MoonIcon className="h-5 w-5 mr-2 text-primary" />
+                Sleep Hours
+                <InfoIcon className="h-4 w-4 ml-2 text-muted-foreground cursor-help" />
+                <span className="text-xs ml-auto text-muted-foreground">Timers can pause during these hours</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label className="mb-1 block text-sm">From</Label>
+                  <Input
+                    type="time"
+                    value={sleepHoursStart}
+                    onChange={(e) => setSleepHoursStart(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-sm">To</Label>
+                  <Input
+                    type="time"
+                    value={sleepHoursEnd}
+                    onChange={(e) => setSleepHoursEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={saveSleepHours}
+                >
+                  Save Sleep Hours
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Active Timer */}
         <div className="flex flex-col items-center pt-4">
@@ -166,7 +296,10 @@ const TimerPage = () => {
                 {activeTimer.name}
                 <div className="flex gap-1 mt-1">
                   {activeTimer.pauseDuringSleep && (
-                    <Badge variant="outline" className="text-xs">Sleep-Aware</Badge>
+                    <Badge variant="outline" className="text-xs flex items-center">
+                      <MoonIcon className="h-3 w-3 mr-1" />
+                      Sleep-Aware
+                    </Badge>
                   )}
                   {activeTimer.repeatInterval && (
                     <Badge variant="outline" className="text-xs">
@@ -189,6 +322,8 @@ const TimerPage = () => {
                 repeatInterval={activeTimer.repeatInterval}
                 activeDays={activeTimer.activeDays}
                 manualDuration={false}
+                sleepHoursStart={sleepHoursStart}
+                sleepHoursEnd={sleepHoursEnd}
               />
               <Button
                 variant="ghost"
@@ -211,6 +346,8 @@ const TimerPage = () => {
                   defaultMinutes={20} 
                   onComplete={handleTimerComplete}
                   manualDuration={true}
+                  sleepHoursStart={sleepHoursStart}
+                  sleepHoursEnd={sleepHoursEnd}
                 />
               </CardContent>
             </Card>
@@ -281,7 +418,12 @@ const TimerPage = () => {
                       onCheckedChange={(checked) => setNewPresetPauseSleep(checked)}
                       className="mr-2"
                     />
-                    <Label htmlFor="pauseSleep">Pause during sleep hours</Label>
+                    <Label htmlFor="pauseSleep" className="flex items-center">
+                      Pause during sleep hours 
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({sleepHoursStart} - {sleepHoursEnd})
+                      </span>
+                    </Label>
                   </div>
                   
                   <div className="flex items-center">
@@ -349,7 +491,10 @@ const TimerPage = () => {
                       {preset.pauseDuringSleep && (
                         <span className="flex items-center">
                           <span>•</span>
-                          <span className="ml-2">Pauses during sleep</span>
+                          <span className="ml-2 flex items-center">
+                            <MoonIcon className="h-3 w-3 mr-1" />
+                            Pauses {sleepHoursStart}-{sleepHoursEnd}
+                          </span>
                         </span>
                       )}
                       
@@ -375,14 +520,29 @@ const TimerPage = () => {
                     </div>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-full h-8 w-8 p-0"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span className="sr-only">Start</span>
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full h-8 w-8 p-0 hover:bg-destructive/10"
+                    onClick={(e) => deletePreset(e, preset.id)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                    <span className="sr-only">Delete</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full h-8 w-8 p-0"
+                  >
+                    <Bell className="h-4 w-4" />
+                    <span className="sr-only">Start</span>
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

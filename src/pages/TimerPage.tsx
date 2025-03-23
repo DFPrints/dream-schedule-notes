@@ -7,27 +7,78 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { PlusIcon, ClockIcon, TimerOffIcon, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { 
+  PlusIcon, 
+  ClockIcon, 
+  TimerOffIcon, 
+  Bell, 
+  CalendarIcon,
+  RepeatIcon
+} from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface TimerPreset {
   id: string;
   name: string;
   minutes: number;
   pauseDuringSleep: boolean;
+  repeatInterval?: number;
+  activeDays?: string[];
+  manualDuration?: boolean;
 }
+
+const daysOfWeek = [
+  { value: 'sun', label: 'Sun' },
+  { value: 'mon', label: 'Mon' },
+  { value: 'tue', label: 'Tue' },
+  { value: 'wed', label: 'Wed' },
+  { value: 'thu', label: 'Thu' },
+  { value: 'fri', label: 'Fri' },
+  { value: 'sat', label: 'Sat' },
+];
 
 const TimerPage = () => {
   const [activeTimer, setActiveTimer] = useState<TimerPreset | null>(null);
   const [presets, setPresets] = useState<TimerPreset[]>([
-    { id: '1', name: 'Quick Focus', minutes: 15, pauseDuringSleep: false },
-    { id: '2', name: 'Deep Work', minutes: 45, pauseDuringSleep: false },
-    { id: '3', name: 'Overnight', minutes: 480, pauseDuringSleep: true },
+    { 
+      id: '1', 
+      name: 'Quick Focus', 
+      minutes: 15, 
+      pauseDuringSleep: false,
+      activeDays: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    },
+    { 
+      id: '2', 
+      name: 'Deep Work', 
+      minutes: 45, 
+      pauseDuringSleep: false,
+      activeDays: ['mon', 'tue', 'wed', 'thu', 'fri']
+    },
+    { 
+      id: '3', 
+      name: 'Overnight', 
+      minutes: 480, 
+      pauseDuringSleep: true,
+      activeDays: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    },
+    { 
+      id: '4', 
+      name: 'Hourly Reminder', 
+      minutes: 60, 
+      pauseDuringSleep: true,
+      repeatInterval: 60,
+      activeDays: ['mon', 'tue', 'wed', 'thu', 'fri']
+    },
   ]);
   const [newPresetName, setNewPresetName] = useState('');
   const [newPresetMinutes, setNewPresetMinutes] = useState(20);
   const [newPresetPauseSleep, setNewPresetPauseSleep] = useState(false);
+  const [newPresetRepeat, setNewPresetRepeat] = useState(false);
+  const [newPresetRepeatInterval, setNewPresetRepeatInterval] = useState(60);
+  const [newPresetDays, setNewPresetDays] = useState(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
   const [isAddingPreset, setIsAddingPreset] = useState(false);
 
   // Handle timer completion
@@ -49,6 +100,18 @@ const TimerPage = () => {
     });
   };
 
+  // Toggle day selection
+  const toggleDay = (day: string) => {
+    if (newPresetDays.includes(day)) {
+      // Don't allow removing the last day
+      if (newPresetDays.length > 1) {
+        setNewPresetDays(newPresetDays.filter(d => d !== day));
+      }
+    } else {
+      setNewPresetDays([...newPresetDays, day]);
+    }
+  };
+
   // Add a new preset
   const addNewPreset = () => {
     if (!newPresetName.trim()) {
@@ -65,12 +128,17 @@ const TimerPage = () => {
       name: newPresetName,
       minutes: newPresetMinutes,
       pauseDuringSleep: newPresetPauseSleep,
+      activeDays: newPresetDays,
+      repeatInterval: newPresetRepeat ? newPresetRepeatInterval : undefined,
     };
 
     setPresets([...presets, newPreset]);
     setNewPresetName('');
     setNewPresetMinutes(20);
     setNewPresetPauseSleep(false);
+    setNewPresetRepeat(false);
+    setNewPresetRepeatInterval(60);
+    setNewPresetDays(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
     setIsAddingPreset(false);
 
     toast({
@@ -96,14 +164,31 @@ const TimerPage = () => {
             <>
               <h2 className="text-lg font-medium mb-6">
                 {activeTimer.name}
-                {activeTimer.pauseDuringSleep && (
-                  <Badge variant="outline" className="ml-2">Sleep-Aware</Badge>
-                )}
+                <div className="flex gap-1 mt-1">
+                  {activeTimer.pauseDuringSleep && (
+                    <Badge variant="outline" className="text-xs">Sleep-Aware</Badge>
+                  )}
+                  {activeTimer.repeatInterval && (
+                    <Badge variant="outline" className="text-xs">
+                      <RepeatIcon className="h-3 w-3 mr-1" />
+                      Every {activeTimer.repeatInterval}m
+                    </Badge>
+                  )}
+                  {activeTimer.activeDays && activeTimer.activeDays.length < 7 && (
+                    <Badge variant="outline" className="text-xs">
+                      <CalendarIcon className="h-3 w-3 mr-1" />
+                      {activeTimer.activeDays.length} days
+                    </Badge>
+                  )}
+                </div>
               </h2>
               <Timer 
                 defaultMinutes={activeTimer.minutes} 
                 pauseWhenSleeping={activeTimer.pauseDuringSleep}
                 onComplete={handleTimerComplete}
+                repeatInterval={activeTimer.repeatInterval}
+                activeDays={activeTimer.activeDays}
+                manualDuration={false}
               />
               <Button
                 variant="ghost"
@@ -125,6 +210,7 @@ const TimerPage = () => {
                 <Timer 
                   defaultMinutes={20} 
                   onComplete={handleTimerComplete}
+                  manualDuration={true}
                 />
               </CardContent>
             </Card>
@@ -169,16 +255,61 @@ const TimerPage = () => {
                       className="mt-1"
                     />
                   </div>
+                  
+                  <div>
+                    <Label className="mb-2 block">Active Days</Label>
+                    <ToggleGroup type="multiple" value={newPresetDays} className="justify-start flex-wrap">
+                      {daysOfWeek.map((day) => (
+                        <ToggleGroupItem
+                          key={day.value}
+                          value={day.value}
+                          aria-label={day.label}
+                          size="sm"
+                          className="data-[state=on]:bg-primary data-[state=on]:text-white"
+                          onClick={() => toggleDay(day.value)}
+                        >
+                          {day.label.substring(0, 1)}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                  
                   <div className="flex items-center">
-                    <input
-                      type="checkbox"
+                    <Switch
                       id="pauseSleep"
                       checked={newPresetPauseSleep}
-                      onChange={(e) => setNewPresetPauseSleep(e.target.checked)}
+                      onCheckedChange={(checked) => setNewPresetPauseSleep(checked)}
                       className="mr-2"
                     />
                     <Label htmlFor="pauseSleep">Pause during sleep hours</Label>
                   </div>
+                  
+                  <div className="flex items-center">
+                    <Switch
+                      id="repeatTimer"
+                      checked={newPresetRepeat}
+                      onCheckedChange={(checked) => setNewPresetRepeat(checked)}
+                      className="mr-2"
+                    />
+                    <Label htmlFor="repeatTimer">Repeat timer</Label>
+                  </div>
+                  
+                  {newPresetRepeat && (
+                    <div className="pl-7">
+                      <Label className="text-sm">Repeat every</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Input
+                          type="number"
+                          value={newPresetRepeatInterval}
+                          onChange={(e) => setNewPresetRepeatInterval(parseInt(e.target.value) || 1)}
+                          min={1}
+                          className="w-16"
+                        />
+                        <span className="text-sm">minutes</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-end space-x-2 pt-2">
                     <Button
                       variant="ghost"
@@ -212,10 +343,36 @@ const TimerPage = () => {
                   </div>
                   <div>
                     <h3 className="font-medium">{preset.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {preset.minutes} minutes
-                      {preset.pauseDuringSleep && " • Pauses during sleep"}
-                    </p>
+                    <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2">
+                      <span>{preset.minutes} minutes</span>
+                      
+                      {preset.pauseDuringSleep && (
+                        <span className="flex items-center">
+                          <span>•</span>
+                          <span className="ml-2">Pauses during sleep</span>
+                        </span>
+                      )}
+                      
+                      {preset.repeatInterval && (
+                        <span className="flex items-center">
+                          <span>•</span>
+                          <span className="ml-2 flex items-center">
+                            <RepeatIcon className="h-3 w-3 mr-1" />
+                            Every {preset.repeatInterval}m
+                          </span>
+                        </span>
+                      )}
+                      
+                      {preset.activeDays && preset.activeDays.length < 7 && (
+                        <span className="flex items-center">
+                          <span>•</span>
+                          <span className="ml-2 flex items-center">
+                            <CalendarIcon className="h-3 w-3 mr-1" />
+                            {preset.activeDays.map(d => d.charAt(0).toUpperCase()).join('')}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <Button

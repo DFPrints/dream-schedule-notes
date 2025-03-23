@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlayIcon, PauseIcon, StopIcon, TimerResetIcon } from 'lucide-react';
+import { PlayIcon, PauseIcon, SquareIcon, TimerResetIcon } from 'lucide-react';
 
 export const StopwatchComponent = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -96,7 +96,7 @@ export const StopwatchComponent = () => {
           variant="outline"
           disabled={!isRunning}
         >
-          <StopIcon className="h-4 w-4 mr-1" />
+          <SquareIcon className="h-4 w-4 mr-1" />
           Lap
         </Button>
       </div>

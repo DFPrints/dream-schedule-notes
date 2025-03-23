@@ -21,7 +21,7 @@ import {
   Vibrate,
   PlayCircle,
   EyeOffIcon,
-  Stopwatch
+  StopwatchIcon
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { StopwatchComponent } from './StopwatchComponent';
@@ -97,13 +97,11 @@ const Settings = ({
     const value = e.target.value;
     setTimerDuration(parseInt(value) || 1);
     
-    // Debounce setting change to prevent UI jank
     if (timerInputTimeoutRef.current) {
       window.clearTimeout(timerInputTimeoutRef.current);
     }
     
     timerInputTimeoutRef.current = window.setTimeout(() => {
-      // Handle duration change after user stops typing
       if (parseInt(value) < 1) {
         setTimerDuration(1);
       } else if (parseInt(value) > 1440) {
@@ -604,7 +602,7 @@ const Settings = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-full bg-primary/10">
-                <Stopwatch className="h-4 w-4 text-primary" />
+                <StopwatchIcon className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <Label>Show Stopwatch</Label>
@@ -667,7 +665,7 @@ const Settings = ({
         <Card className="neo-morphism border-0">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Stopwatch className="h-5 w-5 mr-2 text-primary" />
+              <StopwatchIcon className="h-5 w-5 mr-2 text-primary" />
               Stopwatch
             </CardTitle>
             <CardDescription>Track elapsed time</CardDescription>

@@ -16,7 +16,9 @@ import {
   CalendarIcon,
   RepeatIcon,
   MoonIcon,
-  InfoIcon
+  InfoIcon,
+  Clock12Icon,
+  Clock24Icon,
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -86,8 +88,9 @@ const TimerPage = () => {
   const [sleepHoursStart, setSleepHoursStart] = useState('22:00');
   const [sleepHoursEnd, setSleepHoursEnd] = useState('07:00');
   const [showSleepSettings, setShowSleepSettings] = useState(false);
+  const [is24Hour, setIs24Hour] = useState(true);
 
-  // Load sleep hours from localStorage
+  // Load settings from localStorage
   useEffect(() => {
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
@@ -99,13 +102,27 @@ const TimerPage = () => {
         if (parsedSettings.sleepHoursEnd) {
           setSleepHoursEnd(parsedSettings.sleepHoursEnd);
         }
+        if (parsedSettings.is24Hour !== undefined) {
+          setIs24Hour(parsedSettings.is24Hour);
+        }
       }
     } catch (error) {
       console.error("Error loading settings from localStorage:", error);
     }
   }, []);
 
-  // Save sleep hours to localStorage
+  // Format time string based on 12/24 hour setting
+  const formatTimeString = (timeString: string) => {
+    if (!timeString) return "";
+    if (is24Hour) return timeString;
+    
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
+  // Save settings to localStorage
   const saveSleepHours = () => {
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
@@ -113,17 +130,33 @@ const TimerPage = () => {
       
       settingsObj.sleepHoursStart = sleepHoursStart;
       settingsObj.sleepHoursEnd = sleepHoursEnd;
+      settingsObj.is24Hour = is24Hour;
       
       localStorage.setItem('manifestAppSettings', JSON.stringify(settingsObj));
       
       toast({
-        title: "Sleep Hours Saved",
-        description: `Sleep hours set from ${sleepHoursStart} to ${sleepHoursEnd}.`,
+        title: "Settings Saved",
+        description: `Sleep hours set from ${formatTimeString(sleepHoursStart)} to ${formatTimeString(sleepHoursEnd)}.`,
       });
       
       setShowSleepSettings(false);
     } catch (error) {
-      console.error("Error saving settings to localStorage:", error);
+      console.error("Could not save settings to localStorage:", error);
+    }
+  };
+
+  // Toggle 12/24 hour format
+  const toggle24HourFormat = () => {
+    setIs24Hour(!is24Hour);
+    
+    // Save the setting without closing the dialog
+    try {
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      const settingsObj = savedSettings ? JSON.parse(savedSettings) : {};
+      settingsObj.is24Hour = !is24Hour;
+      localStorage.setItem('manifestAppSettings', JSON.stringify(settingsObj));
+    } catch (error) {
+      console.error("Could not save time format setting:", error);
     }
   };
 
@@ -211,6 +244,21 @@ const TimerPage = () => {
     });
   };
 
+  // Save a preset from the timer
+  const handleSavePreset = (preset: Omit<TimerPreset, 'id'>) => {
+    const newPreset: TimerPreset = {
+      ...preset,
+      id: Date.now().toString(),
+    };
+    
+    setPresets([...presets, newPreset]);
+    
+    toast({
+      title: "Preset Saved",
+      description: `"${preset.name}" preset has been added.`,
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-8 pb-20">
@@ -222,7 +270,29 @@ const TimerPage = () => {
               Set timers for your manifestation practice
             </p>
           </div>
-          <div>
+          <div className="flex gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={toggle24HourFormat}
+                    className="rounded-full"
+                  >
+                    {is24Hour ? (
+                      <Clock24Icon className="h-4 w-4" />
+                    ) : (
+                      <Clock12Icon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Switch to {is24Hour ? '12-hour' : '24-hour'} format</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -266,6 +336,9 @@ const TimerPage = () => {
                     value={sleepHoursStart}
                     onChange={(e) => setSleepHoursStart(e.target.value)}
                   />
+                  <span className="text-xs text-muted-foreground mt-1 block">
+                    {!is24Hour && `(${formatTimeString(sleepHoursStart)})`}
+                  </span>
                 </div>
                 <div>
                   <Label className="mb-1 block text-sm">To</Label>
@@ -274,14 +347,27 @@ const TimerPage = () => {
                     value={sleepHoursEnd}
                     onChange={(e) => setSleepHoursEnd(e.target.value)}
                   />
+                  <span className="text-xs text-muted-foreground mt-1 block">
+                    {!is24Hour && `(${formatTimeString(sleepHoursEnd)})`}
+                  </span>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center mt-4 mb-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="time-format"
+                    checked={is24Hour}
+                    onCheckedChange={toggle24HourFormat}
+                  />
+                  <Label htmlFor="time-format" className="cursor-pointer">
+                    24-hour format
+                  </Label>
+                </div>
                 <Button
                   size="sm"
                   onClick={saveSleepHours}
                 >
-                  Save Sleep Hours
+                  Save Settings
                 </Button>
               </div>
             </CardContent>
@@ -324,6 +410,7 @@ const TimerPage = () => {
                 manualDuration={false}
                 sleepHoursStart={sleepHoursStart}
                 sleepHoursEnd={sleepHoursEnd}
+                is24Hour={is24Hour}
               />
               <Button
                 variant="ghost"
@@ -348,6 +435,8 @@ const TimerPage = () => {
                   manualDuration={true}
                   sleepHoursStart={sleepHoursStart}
                   sleepHoursEnd={sleepHoursEnd}
+                  is24Hour={is24Hour}
+                  onSavePreset={handleSavePreset}
                 />
               </CardContent>
             </Card>
@@ -421,7 +510,7 @@ const TimerPage = () => {
                     <Label htmlFor="pauseSleep" className="flex items-center">
                       Pause during sleep hours 
                       <span className="text-xs text-muted-foreground ml-2">
-                        ({sleepHoursStart} - {sleepHoursEnd})
+                        ({formatTimeString(sleepHoursStart)} - {formatTimeString(sleepHoursEnd)})
                       </span>
                     </Label>
                   </div>
@@ -493,7 +582,7 @@ const TimerPage = () => {
                           <span>•</span>
                           <span className="ml-2 flex items-center">
                             <MoonIcon className="h-3 w-3 mr-1" />
-                            Pauses {sleepHoursStart}-{sleepHoursEnd}
+                            Pauses {formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)}
                           </span>
                         </span>
                       )}

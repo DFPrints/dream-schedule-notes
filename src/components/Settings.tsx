@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { BellIcon, MoonIcon, SunIcon, VolumeIcon, TimerIcon, PhoneIcon, SaveIcon, BedIcon, LanguagesIcon } from 'lucide-react';
+import { BellIcon, MoonIcon, SunIcon, VolumeIcon, TimerIcon, PhoneIcon, SaveIcon, BedIcon, LanguagesIcon, Clock24Icon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface SettingsProps {
@@ -21,6 +21,7 @@ interface SettingsProps {
     defaultTimerDuration: number;
     language: string;
     keepScreenOn?: boolean;
+    is24Hour?: boolean;
   };
   onUpdateSettings?: (settings: any) => void;
 }
@@ -36,6 +37,7 @@ const Settings = ({
     defaultTimerDuration: 20,
     language: 'en',
     keepScreenOn: true,
+    is24Hour: true,
   },
   onUpdateSettings
 }: SettingsProps) => {
@@ -44,6 +46,17 @@ const Settings = ({
   const [sleepEnd, setSleepEnd] = useState(initialSettings.sleepHoursEnd);
   const [timerDuration, setTimerDuration] = useState(initialSettings.defaultTimerDuration);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Format time string based on 12/24 hour setting
+  const formatTimeString = (timeString: string) => {
+    if (!timeString) return "";
+    if (settings.is24Hour) return timeString;
+    
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
 
   // Track changes to enable/disable save button
   useEffect(() => {
@@ -248,6 +261,7 @@ const Settings = ({
       defaultTimerDuration: 20,
       language: 'en',
       keepScreenOn: true,
+      is24Hour: true,
     };
     
     setSettings(defaultSettings);
@@ -319,6 +333,28 @@ const Settings = ({
                 <option value="fr">Français</option>
                 <option value="de">Deutsch</option>
               </select>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Clock24Icon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Time Format</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose between 12-hour and 24-hour time
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className={!settings.is24Hour ? "font-medium" : "text-muted-foreground"}>12h</span>
+              <Switch
+                checked={settings.is24Hour}
+                onCheckedChange={(checked) => handleSettingChange('is24Hour', checked)}
+              />
+              <span className={settings.is24Hour ? "font-medium" : "text-muted-foreground"}>24h</span>
             </div>
           </div>
         </CardContent>
@@ -454,6 +490,9 @@ const Settings = ({
                   value={sleepStart}
                   onChange={(e) => setSleepStart(e.target.value)}
                 />
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  {!settings.is24Hour && `(${formatTimeString(sleepStart)})`}
+                </span>
               </div>
               <div>
                 <Label className="mb-1 inline-block text-sm">To</Label>
@@ -462,6 +501,9 @@ const Settings = ({
                   value={sleepEnd}
                   onChange={(e) => setSleepEnd(e.target.value)}
                 />
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  {!settings.is24Hour && `(${formatTimeString(sleepEnd)})`}
+                </span>
               </div>
             </div>
           </div>

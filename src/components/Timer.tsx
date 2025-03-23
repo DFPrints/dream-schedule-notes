@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,8 @@ import {
   MoonIcon, 
   RepeatIcon,
   CalendarIcon,
-  AlarmClockIcon
+  AlarmClockIcon,
+  SaveIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -38,6 +38,16 @@ interface TimerProps {
   manualDuration?: boolean; // allow manual duration input
   sleepHoursStart?: string; // start of sleep hours (e.g. "22:00")
   sleepHoursEnd?: string; // end of sleep hours (e.g. "06:00")
+  is24Hour?: boolean; // 24-hour time format
+  onSavePreset?: (preset: TimerPreset) => void; // handle saving preset
+}
+
+interface TimerPreset {
+  name: string;
+  minutes: number;
+  pauseDuringSleep: boolean;
+  repeatInterval?: number;
+  activeDays?: string[];
 }
 
 const daysOfWeek = [
@@ -58,7 +68,9 @@ const Timer = ({
   activeDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
   manualDuration = false,
   sleepHoursStart = "22:00",
-  sleepHoursEnd = "06:00"
+  sleepHoursEnd = "06:00",
+  is24Hour = true,
+  onSavePreset
 }: TimerProps) => {
   const [timeLeft, setTimeLeft] = useState(defaultMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -74,18 +86,22 @@ const Timer = ({
   const [manualMinutes, setManualMinutes] = useState(defaultMinutes);
   const [manualSeconds, setManualSeconds] = useState(0);
   const [isSleepTime, setIsSleepTime] = useState(false);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  
+  const [hoursInput, setHoursInput] = useState("0");
+  const [minutesInput, setMinutesInput] = useState(defaultMinutes.toString());
+  const [secondsInput, setSecondsInput] = useState("0");
   
   const intervalRef = useRef<number | null>(null);
   const repeatTimeoutRef = useRef<number | null>(null);
   const sleepCheckIntervalRef = useRef<number | null>(null);
 
-  // Check if timer should be active today
   const isActiveToday = () => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase().slice(0, 3);
     return selectedDays.includes(today);
   };
 
-  // Format time for display
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -98,35 +114,37 @@ const Timer = ({
     return `${formattedHrs}${formattedMins}${formattedSecs}`;
   };
 
-  // Check if current time is within sleep hours
+  const formatTimeString = (timeString: string) => {
+    if (!timeString) return "";
+    if (is24Hour) return timeString;
+    
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
   const checkIfSleepTime = () => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTimeMinutes = currentHour * 60 + currentMinute;
     
-    // Parse sleep hours
     const [sleepStartHour, sleepStartMinute] = sleepHoursStart.split(':').map(Number);
     const [sleepEndHour, sleepEndMinute] = sleepHoursEnd.split(':').map(Number);
     
     const sleepStartMinutes = sleepStartHour * 60 + sleepStartMinute;
     const sleepEndMinutes = sleepEndHour * 60 + sleepEndMinute;
     
-    // Check if current time is within sleep hours
-    // Sleep hours can span across midnight
     if (sleepStartMinutes > sleepEndMinutes) {
-      // Sleep period crosses midnight
       return currentTimeMinutes >= sleepStartMinutes || currentTimeMinutes <= sleepEndMinutes;
     } else {
-      // Sleep period within same day
       return currentTimeMinutes >= sleepStartMinutes && currentTimeMinutes <= sleepEndMinutes;
     }
   };
 
-  // Start sleep time checking interval
   useEffect(() => {
     if (isPauseDuringSleep && isRunning) {
-      // Check immediately when timer starts
       const isSleeping = checkIfSleepTime();
       setIsSleepTime(isSleeping);
       
@@ -140,20 +158,17 @@ const Timer = ({
         startTimerInterval();
       }
       
-      // Setup interval to check sleep time every minute
       sleepCheckIntervalRef.current = window.setInterval(() => {
         const nowSleeping = checkIfSleepTime();
         setIsSleepTime(nowSleeping);
         
         if (nowSleeping && !isSleepTime && isRunning) {
-          // Just entered sleep time
           pauseTimer();
           toast({
             title: "Timer Paused",
             description: "Timer paused during sleep hours",
           });
         } else if (!nowSleeping && isSleepTime && !isRunning && intervalRef.current === null) {
-          // Just exited sleep time
           setIsRunning(true);
           startTimerInterval();
           toast({
@@ -161,7 +176,7 @@ const Timer = ({
             description: "Sleep hours ended, timer resumed",
           });
         }
-      }, 60000); // Check every minute
+      }, 60000);
       
       return () => {
         if (sleepCheckIntervalRef.current) {
@@ -171,26 +186,17 @@ const Timer = ({
     }
   }, [isPauseDuringSleep, isRunning, sleepHoursStart, sleepHoursEnd]);
 
-  // Handle visibility change to pause timer when tab is not visible
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (isPauseDuringSleep && isRunning) {
-        if (document.visibilityState === 'hidden') {
-          clearInterval(intervalRef.current!);
-          intervalRef.current = null;
-        } else {
-          startTimerInterval();
-        }
+    if (isPauseDuringSleep && isRunning) {
+      if (document.visibilityState === 'hidden') {
+        clearInterval(intervalRef.current!);
+        intervalRef.current = null;
+      } else {
+        startTimerInterval();
       }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    }
   }, [isPauseDuringSleep, isRunning]);
 
-  // Handle timer completion
   useEffect(() => {
     if (timeLeft === 0 && isRunning) {
       clearInterval(intervalRef.current!);
@@ -199,16 +205,13 @@ const Timer = ({
       setCompletionCount(prev => prev + 1);
       onComplete?.();
       
-      // Handle repeating timer
       if (isRepeating && repeatEvery > 0) {
         toast({
           title: "Timer Completed",
           description: `Timer will repeat in ${repeatEvery} ${repeatEvery === 1 ? 'minute' : 'minutes'}`
         });
         
-        // Schedule the next timer
         repeatTimeoutRef.current = window.setTimeout(() => {
-          // Only start if it's an active day and not sleep time (if enabled)
           if (isActiveToday()) {
             if (isPauseDuringSleep && checkIfSleepTime()) {
               toast({
@@ -231,7 +234,6 @@ const Timer = ({
     }
   }, [timeLeft, isRunning, onComplete, isRepeating, repeatEvery, timeSetting]);
 
-  // Clean up timeouts on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -240,14 +242,12 @@ const Timer = ({
     };
   }, []);
 
-  // Pause timer
   const pauseTimer = () => {
     clearInterval(intervalRef.current!);
     intervalRef.current = null;
     setIsRunning(false);
   };
 
-  // Start timer interval
   const startTimerInterval = () => {
     if (intervalRef.current !== null) return;
     
@@ -263,9 +263,7 @@ const Timer = ({
     }, 1000);
   };
 
-  // Toggle timer play/pause
   const toggleTimer = () => {
-    // Check if today is an active day
     if (!isRunning && !isActiveToday()) {
       toast({
         title: "Timer Not Started",
@@ -275,7 +273,6 @@ const Timer = ({
       return;
     }
     
-    // Check for sleep time
     if (!isRunning && isPauseDuringSleep && checkIfSleepTime()) {
       setIsSleepTime(true);
       toast({
@@ -290,7 +287,6 @@ const Timer = ({
       pauseTimer();
     } else {
       if (timeLeft === 0) {
-        // Reset timer if it's completed
         setTimeLeft(timeSetting * 60);
       }
       startTimerInterval();
@@ -298,7 +294,6 @@ const Timer = ({
     }
   };
 
-  // Reset timer
   const resetTimer = () => {
     clearInterval(intervalRef.current!);
     intervalRef.current = null;
@@ -311,7 +306,6 @@ const Timer = ({
     setCompletionCount(0);
   };
 
-  // Handle time setting change
   const handleTimeSettingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value) && value > 0) {
@@ -319,8 +313,51 @@ const Timer = ({
     }
   };
 
-  // Handle manual time inputs
+  const handleHoursInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setHoursInput(value);
+  };
+
+  const handleMinutesInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMinutesInput(value);
+  };
+
+  const handleSecondsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSecondsInput(value);
+  };
+
+  const applyTimeInputs = () => {
+    const hrs = parseInt(hoursInput) || 0;
+    const mins = parseInt(minutesInput) || 0;
+    const secs = parseInt(secondsInput) || 0;
+    
+    const validHrs = Math.min(Math.max(hrs, 0), 23);
+    const validMins = Math.min(Math.max(mins, 0), 59);
+    const validSecs = Math.min(Math.max(secs, 0), 59);
+
+    setManualHours(validHrs);
+    setManualMinutes(validMins);
+    setManualSeconds(validSecs);
+
+    setHoursInput(validHrs.toString());
+    setMinutesInput(validMins.toString());
+    setSecondsInput(validSecs.toString());
+  };
+
+  const handleInputBlur = () => {
+    applyTimeInputs();
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      applyTimeInputs();
+    }
+  };
+
   const handleManualTimeChange = () => {
+    applyTimeInputs();
     const totalSeconds = (manualHours * 3600) + (manualMinutes * 60) + manualSeconds;
     if (totalSeconds > 0) {
       setTimeSetting(Math.ceil(totalSeconds / 60));
@@ -335,7 +372,6 @@ const Timer = ({
     }
   };
 
-  // Save time setting
   const saveTimeSetting = () => {
     if (isManualDuration) {
       handleManualTimeChange();
@@ -345,13 +381,18 @@ const Timer = ({
     }
   };
 
-  // Toggle edit mode
   const toggleEdit = () => {
     if (isRunning) return;
+    
+    if (!isEditing) {
+      setHoursInput(manualHours.toString());
+      setMinutesInput(manualMinutes.toString());
+      setSecondsInput(manualSeconds.toString());
+    }
+    
     setIsEditing(!isEditing);
   };
 
-  // Toggle repeat timer
   const toggleRepeat = (value: boolean) => {
     setIsRepeating(value);
     if (!value && repeatTimeoutRef.current) {
@@ -360,10 +401,8 @@ const Timer = ({
     }
   };
 
-  // Toggle day selection
   const toggleDay = (day: string) => {
     if (selectedDays.includes(day)) {
-      // Don't allow removing the last day
       if (selectedDays.length > 1) {
         setSelectedDays(selectedDays.filter(d => d !== day));
       }
@@ -372,12 +411,10 @@ const Timer = ({
     }
   };
 
-  // Calculate progress percentage
   const progressPercent = ((timeSetting * 60 - timeLeft) / (timeSetting * 60)) * 100;
 
   return (
     <div className="flex flex-col items-center">
-      {/* Timer Circle */}
       <div 
         className={cn(
           "relative w-64 h-64 rounded-full mb-8 cursor-pointer neo-morphism flex items-center justify-center",
@@ -385,7 +422,6 @@ const Timer = ({
         )}
         onClick={toggleEdit}
       >
-        {/* Progress Ring */}
         <svg className="absolute inset-0 w-full h-full -rotate-90">
           <circle
             cx="128"
@@ -415,7 +451,6 @@ const Timer = ({
           />
         </svg>
 
-        {/* Timer Display */}
         <div className="z-10 text-center">
           {isEditing ? (
             <div className="flex flex-col items-center space-y-2 px-4">
@@ -424,8 +459,10 @@ const Timer = ({
                   <div className="flex items-center space-x-2">
                     <Input
                       type="number"
-                      value={manualHours}
-                      onChange={(e) => setManualHours(parseInt(e.target.value) || 0)}
+                      value={hoursInput}
+                      onChange={handleHoursInputChange}
+                      onBlur={handleInputBlur}
+                      onKeyDown={handleInputKeyDown}
                       className="w-14 text-center text-lg h-10"
                       min="0"
                       max="23"
@@ -433,8 +470,10 @@ const Timer = ({
                     <span className="text-sm">h</span>
                     <Input
                       type="number"
-                      value={manualMinutes}
-                      onChange={(e) => setManualMinutes(parseInt(e.target.value) || 0)}
+                      value={minutesInput}
+                      onChange={handleMinutesInputChange}
+                      onBlur={handleInputBlur}
+                      onKeyDown={handleInputKeyDown}
                       className="w-14 text-center text-lg h-10"
                       min="0"
                       max="59"
@@ -442,8 +481,10 @@ const Timer = ({
                     <span className="text-sm">m</span>
                     <Input
                       type="number"
-                      value={manualSeconds}
-                      onChange={(e) => setManualSeconds(parseInt(e.target.value) || 0)}
+                      value={secondsInput}
+                      onChange={handleSecondsInputChange}
+                      onBlur={handleInputBlur}
+                      onKeyDown={handleInputKeyDown}
                       className="w-14 text-center text-lg h-10"
                       min="0"
                       max="59"
@@ -493,6 +534,16 @@ const Timer = ({
                   </div>
                 </div>
               )}
+              
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => setShowSavePreset(true)}
+              >
+                <SaveIcon className="h-3 w-3 mr-1" />
+                Save as Preset
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -516,7 +567,7 @@ const Timer = ({
               {isPauseDuringSleep && (
                 <div className="flex items-center text-xs text-primary/70 mt-1">
                   <MoonIcon className="h-3 w-3 mr-1" />
-                  <span>Pauses {sleepHoursStart}-{sleepHoursEnd}</span>
+                  <span>Pauses {formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)}</span>
                 </div>
               )}
             </div>
@@ -524,7 +575,47 @@ const Timer = ({
         </div>
       </div>
 
-      {/* Active Days */}
+      {showSavePreset && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-medium mb-4">Save Timer Preset</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="preset-name">Preset Name</Label>
+                <Input
+                  id="preset-name"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="e.g., My Focus Timer"
+                  className="mt-1"
+                  autoFocus
+                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Duration: {isManualDuration ? 
+                  `${manualHours}h ${manualMinutes}m ${manualSeconds}s` : 
+                  `${timeSetting} minutes`}
+                </p>
+                <p>Sleep-aware: {isPauseDuringSleep ? 'Yes' : 'No'}</p>
+                {isRepeating && <p>Repeats every: {repeatEvery} minutes</p>}
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowSavePreset(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSavePreset}>
+                  <SaveIcon className="h-4 w-4 mr-2" />
+                  Save Preset
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4">
         <ToggleGroup type="multiple" value={selectedDays} className="justify-center">
           {daysOfWeek.map((day) => (
@@ -542,7 +633,6 @@ const Timer = ({
         </ToggleGroup>
       </div>
 
-      {/* Controls */}
       <div className="flex items-center space-x-4">
         <Button
           size="lg"
@@ -595,13 +685,12 @@ const Timer = ({
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Pause during sleep hours ({sleepHoursStart}-{sleepHoursEnd})</p>
+              <p>Pause during sleep hours ({formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)})</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
       
-      {/* Repeat Option */}
       <div className="mt-4 flex flex-col items-center">
         <div className="flex items-center space-x-2 mb-2">
           <Switch
@@ -630,12 +719,11 @@ const Timer = ({
         )}
       </div>
       
-      {/* Sleep Mode Description */}
       {isPauseDuringSleep && (
         <div className="flex items-start mt-4 max-w-xs text-center">
           <AlertCircleIcon className="h-4 w-4 text-muted-foreground mr-2 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Timer will automatically pause during sleep hours ({sleepHoursStart} - {sleepHoursEnd}) and when the app is in the background
+            Timer will automatically pause during sleep hours ({formatTimeString(sleepHoursStart)} - {formatTimeString(sleepHoursEnd)}) and when the app is in the background
           </p>
         </div>
       )}

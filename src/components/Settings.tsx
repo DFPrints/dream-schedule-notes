@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -6,8 +6,25 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { BellIcon, MoonIcon, SunIcon, VolumeIcon, TimerIcon, PhoneIcon, SaveIcon, BedIcon, LanguagesIcon, Clock } from 'lucide-react';
+import { 
+  BellIcon, 
+  MoonIcon, 
+  SunIcon, 
+  VolumeIcon, 
+  TimerIcon, 
+  PhoneIcon, 
+  SaveIcon, 
+  BedIcon, 
+  LanguagesIcon, 
+  Clock,
+  Clock12,
+  Vibrate,
+  PlayCircle,
+  EyeOffIcon,
+  Stopwatch
+} from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { StopwatchComponent } from './StopwatchComponent';
 
 interface SettingsProps {
   settings?: {
@@ -21,6 +38,10 @@ interface SettingsProps {
     language: string;
     keepScreenOn?: boolean;
     is24Hour?: boolean;
+    showStopwatch?: boolean;
+    enableVibration?: boolean;
+    autoStartTimers?: boolean;
+    hideCompleted?: boolean;
   };
   onUpdateSettings?: (settings: any) => void;
 }
@@ -37,6 +58,10 @@ const Settings = ({
     language: 'en',
     keepScreenOn: true,
     is24Hour: true,
+    showStopwatch: true,
+    enableVibration: true,
+    autoStartTimers: false,
+    hideCompleted: false,
   },
   onUpdateSettings
 }: SettingsProps) => {
@@ -45,6 +70,7 @@ const Settings = ({
   const [sleepEnd, setSleepEnd] = useState(initialSettings.sleepHoursEnd);
   const [timerDuration, setTimerDuration] = useState(initialSettings.defaultTimerDuration);
   const [hasChanges, setHasChanges] = useState(false);
+  const timerInputTimeoutRef = useRef<number | null>(null);
 
   const formatTimeString = (timeString: string) => {
     if (!timeString) return "";
@@ -67,6 +93,29 @@ const Settings = ({
     setHasChanges(settingsChanged);
   }, [settings, sleepStart, sleepEnd, timerDuration, initialSettings]);
 
+  const handleTimerDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTimerDuration(parseInt(value) || 1);
+    
+    // Debounce setting change to prevent UI jank
+    if (timerInputTimeoutRef.current) {
+      window.clearTimeout(timerInputTimeoutRef.current);
+    }
+    
+    timerInputTimeoutRef.current = window.setTimeout(() => {
+      // Handle duration change after user stops typing
+      if (parseInt(value) < 1) {
+        setTimerDuration(1);
+      } else if (parseInt(value) > 1440) {
+        setTimerDuration(1440);
+        toast({
+          title: "Maximum Duration",
+          description: "Timer duration limited to 24 hours (1440 minutes)",
+        });
+      }
+    }, 500);
+  };
+
   const handleSettingChange = (key: string, value: any) => {
     setSettings({
       ...settings,
@@ -87,6 +136,35 @@ const Settings = ({
 
     if (key === 'language') {
       applyLanguageChange(value);
+    }
+    
+    if (key === 'enableVibration' && value === true) {
+      testVibration();
+    }
+  };
+
+  const testVibration = () => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(200);
+        toast({
+          title: "Testing Vibration",
+          description: "Your device should vibrate briefly.",
+        });
+      } catch (error) {
+        console.error("Could not vibrate device:", error);
+        toast({
+          title: "Vibration Failed",
+          description: "Your device doesn't support vibration or it's disabled.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Vibration Not Supported",
+        description: "Your device doesn't support vibration.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -239,6 +317,10 @@ const Settings = ({
       language: 'en',
       keepScreenOn: true,
       is24Hour: true,
+      showStopwatch: true,
+      enableVibration: true,
+      autoStartTimers: false,
+      hideCompleted: false,
     };
     
     setSettings(defaultSettings);
@@ -333,9 +415,30 @@ const Settings = ({
               <span className={settings.is24Hour ? "font-medium" : "text-muted-foreground"}>24h</span>
             </div>
           </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <EyeOffIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Hide Completed</Label>
+                <p className="text-sm text-muted-foreground">
+                  Hide completed timers in the list
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.hideCompleted || false}
+              onCheckedChange={(checked) => 
+                handleSettingChange('hideCompleted', checked)
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 
+      {/* Notifications settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
@@ -417,9 +520,41 @@ const Settings = ({
               </div>
             </div>
           )}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Vibrate className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Vibration</Label>
+                <p className="text-sm text-muted-foreground">
+                  Vibrate on timer completion
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={settings.enableVibration || false}
+                onCheckedChange={(checked) => 
+                  handleSettingChange('enableVibration', checked)
+                }
+              />
+              {settings.enableVibration && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={testVibration}
+                >
+                  Test
+                </Button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Timer settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Timer Settings</CardTitle>
@@ -437,17 +572,58 @@ const Settings = ({
               <Input
                 type="number"
                 min={1}
-                max={120}
+                max={1440}
                 value={timerDuration}
-                onChange={(e) => setTimerDuration(parseInt(e.target.value) || 1)}
+                onChange={handleTimerDurationChange}
                 className="w-20"
               />
               <span className="text-sm text-muted-foreground">minutes</span>
             </div>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <PlayCircle className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Auto-start Timers</Label>
+                <p className="text-sm text-muted-foreground">
+                  Start timers immediately when selected
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.autoStartTimers || false}
+              onCheckedChange={(checked) => 
+                handleSettingChange('autoStartTimers', checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Stopwatch className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Show Stopwatch</Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable stopwatch feature
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.showStopwatch || false}
+              onCheckedChange={(checked) => 
+                handleSettingChange('showStopwatch', checked)
+              }
+            />
+          </div>
+
           <Separator className="my-4" />
           
+          {/* Sleep Hours section */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-full bg-primary/10">
@@ -486,6 +662,23 @@ const Settings = ({
         </CardContent>
       </Card>
 
+      {/* Stopwatch card */}
+      {settings.showStopwatch && (
+        <Card className="neo-morphism border-0">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Stopwatch className="h-5 w-5 mr-2 text-primary" />
+              Stopwatch
+            </CardTitle>
+            <CardDescription>Track elapsed time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StopwatchComponent />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Device settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Device Settings</CardTitle>

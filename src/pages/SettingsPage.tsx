@@ -15,6 +15,11 @@ const SettingsPage = () => {
     defaultTimerDuration: 20,
     language: 'en',
     keepScreenOn: true,
+    is24Hour: true,
+    showStopwatch: true,
+    enableVibration: true,
+    autoStartTimers: false,
+    hideCompleted: false,
   });
   
   // Load settings from localStorage on component mount
@@ -23,7 +28,10 @@ const SettingsPage = () => {
       const savedSettings = localStorage.getItem('manifestAppSettings');
       if (savedSettings) {
         const parsedSettings = JSON.parse(savedSettings);
-        setSettings(parsedSettings);
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          ...parsedSettings
+        }));
         
         // Apply dark mode if it was enabled
         if (parsedSettings.darkMode) {
@@ -47,10 +55,21 @@ const SettingsPage = () => {
 
   // Update settings
   const updateSettings = (newSettings: any) => {
-    setSettings(newSettings);
+    setSettings(prevSettings => {
+      const updatedSettings = { ...prevSettings, ...newSettings };
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('manifestAppSettings', JSON.stringify(updatedSettings));
+      } catch (error) {
+        console.error("Could not save settings to localStorage:", error);
+      }
+      
+      return updatedSettings;
+    });
     
     // If dark mode was toggled, apply it
-    if (newSettings.darkMode !== settings.darkMode) {
+    if (newSettings.darkMode !== undefined && newSettings.darkMode !== settings.darkMode) {
       document.documentElement.classList.toggle('dark', newSettings.darkMode);
       
       toast({
@@ -60,7 +79,7 @@ const SettingsPage = () => {
     }
     
     // If language was changed
-    if (newSettings.language !== settings.language) {
+    if (newSettings.language !== undefined && newSettings.language !== settings.language) {
       document.documentElement.lang = newSettings.language;
       
       const languages: Record<string, string> = {

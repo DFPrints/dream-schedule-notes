@@ -1,0 +1,60 @@
+
+import React, { useState, useRef } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+interface TimerInputFixProps {
+  initialValue: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}
+
+export const TimerInputFix = ({ 
+  initialValue = 20, 
+  onChange,
+  min = 1,
+  max = 1440
+}: TimerInputFixProps) => {
+  const [inputValue, setInputValue] = useState(initialValue.toString());
+  const timeoutRef = useRef<number | null>(null);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Always update the displayed value immediately
+    setInputValue(e.target.value);
+    
+    // Debounce the actual change notification
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = window.setTimeout(() => {
+      // Parse the value, defaulting to min if invalid
+      let numValue = parseInt(e.target.value) || min;
+      
+      // Enforce min/max constraints
+      if (numValue < min) numValue = min;
+      if (numValue > max) numValue = max;
+      
+      // Update the input with the valid value
+      setInputValue(numValue.toString());
+      
+      // Notify parent of the change
+      onChange(numValue);
+    }, 500); // Wait for user to finish typing
+  };
+  
+  return (
+    <div>
+      <Label>Duration (minutes)</Label>
+      <Input
+        type="number"
+        value={inputValue}
+        onChange={handleInputChange}
+        min={min}
+        max={max}
+        className="mt-1"
+      />
+    </div>
+  );
+};

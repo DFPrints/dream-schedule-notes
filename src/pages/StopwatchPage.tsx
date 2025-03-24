@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import { StopwatchComponent } from '@/components/StopwatchComponent';
+import StopwatchComponent from '@/components/StopwatchComponent';
 import StopwatchGoals from '@/components/StopwatchGoals';
 import { toast } from '@/components/ui/use-toast';
 import {

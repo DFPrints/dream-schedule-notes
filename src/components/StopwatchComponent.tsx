@@ -5,11 +5,7 @@ import { PlayIcon, PauseIcon, SquareIcon, TimerResetIcon, FlagIcon, Trophy, Shar
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-interface StopwatchComponentProps {
-  targetTime?: number; // Optional target time in seconds
-}
-
-export const StopwatchComponent = ({ targetTime }: StopwatchComponentProps) => {
+export const StopwatchComponent = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [laps, setLaps] = useState<number[]>([]);
@@ -17,7 +13,6 @@ export const StopwatchComponent = ({ targetTime }: StopwatchComponentProps) => {
   const [worstLap, setWorstLap] = useState<number | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [achievementUnlocked, setAchievementUnlocked] = useState<string | null>(null);
-  const [targetReached, setTargetReached] = useState(false);
   
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -49,17 +44,7 @@ export const StopwatchComponent = ({ targetTime }: StopwatchComponentProps) => {
       }
       
       intervalRef.current = window.setInterval(() => {
-        const currentElapsed = Date.now() - startTimeRef.current!;
-        setElapsedTime(currentElapsed);
-        
-        // Check if target time is reached
-        if (targetTime && !targetReached && currentElapsed >= targetTime * 1000) {
-          setTargetReached(true);
-          toast({
-            title: "Target Time Reached!",
-            description: "You've reached your goal time.",
-          });
-        }
+        setElapsedTime(Date.now() - startTimeRef.current!);
       }, 10);
       
       setIsRunning(true);
@@ -90,7 +75,6 @@ export const StopwatchComponent = ({ targetTime }: StopwatchComponentProps) => {
     setWorstLap(null);
     startTimeRef.current = null;
     setShowShare(false);
-    setTargetReached(false);
   };
   
   // Record a lap
@@ -217,26 +201,6 @@ export const StopwatchComponent = ({ targetTime }: StopwatchComponentProps) => {
   
   return (
     <div className="space-y-6 max-w-md mx-auto">
-      {/* Target time indicator */}
-      {targetTime && !targetReached && (
-        <div className="bg-primary/10 p-2 rounded-lg text-center">
-          <span className="text-sm">
-            Target: {Math.floor(targetTime / 60)}:{(targetTime % 60).toString().padStart(2, '0')}
-            {isRunning && (
-              <span className="ml-2">
-                ({Math.max(0, Math.ceil((targetTime * 1000 - elapsedTime) / 1000))}s remaining)
-              </span>
-            )}
-          </span>
-        </div>
-      )}
-      
-      {targetReached && (
-        <div className="bg-green-500/10 text-green-500 rounded-lg p-2 text-center animate-pulse">
-          <span className="font-medium">Target time reached! 🎉</span>
-        </div>
-      )}
-      
       {achievementUnlocked && (
         <div className="bg-primary/10 text-primary rounded-lg p-2 text-center animate-scale-in mb-2">
           <Trophy className="h-4 w-4 inline-block mr-1" />

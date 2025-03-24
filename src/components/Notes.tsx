@@ -15,6 +15,9 @@ interface Note {
   updatedAt: Date;
   pinned: boolean;
   favorite: boolean;
+  category?: string;
+  tags?: string[];
+  color?: string;
 }
 
 interface NotesProps {
@@ -24,6 +27,12 @@ interface NotesProps {
   onDeleteNote?: (id: string) => void;
   onTogglePinned?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
+  onToggleTag?: (id: string, tag: string) => void;
+  onChangeCategory?: (id: string, category: string) => void;
+  onChangeColor?: (id: string, color: string) => void;
+  availableTags?: string[];
+  categories?: string[];
+  colorOptions?: { name: string; value: string }[];
 }
 
 const Notes = ({
@@ -32,7 +41,13 @@ const Notes = ({
   onUpdateNote,
   onDeleteNote,
   onTogglePinned,
-  onToggleFavorite
+  onToggleFavorite,
+  onToggleTag,
+  onChangeCategory,
+  onChangeColor,
+  availableTags = [],
+  categories = [],
+  colorOptions = []
 }: NotesProps) => {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [editMode, setEditMode] = useState(false);

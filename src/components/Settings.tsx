@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -37,6 +36,7 @@ interface SettingsProps {
     language: string;
     keepScreenOn?: boolean;
     is24Hour?: boolean;
+    showStopwatch?: boolean;
     enableVibration?: boolean;
     autoStartTimers?: boolean;
     hideCompleted?: boolean;
@@ -56,6 +56,7 @@ const Settings = ({
     language: 'en',
     keepScreenOn: true,
     is24Hour: true,
+    showStopwatch: true,
     enableVibration: true,
     autoStartTimers: false,
     hideCompleted: false,
@@ -68,17 +69,6 @@ const Settings = ({
   const [timerDuration, setTimerDuration] = useState(initialSettings.defaultTimerDuration);
   const [hasChanges, setHasChanges] = useState(false);
   const timerInputTimeoutRef = useRef<number | null>(null);
-
-  // Initialize settings with system theme if available
-  useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    if (isDarkMode !== settings.darkMode) {
-      setSettings(prev => ({
-        ...prev,
-        darkMode: isDarkMode
-      }));
-    }
-  }, []);
 
   const formatTimeString = (timeString: string) => {
     if (!timeString) return "";
@@ -187,12 +177,8 @@ const Settings = ({
       description: `App language set to ${languages[lang as keyof typeof languages]}`,
     });
     
+    applyDarkMode(settings.darkMode);
     document.documentElement.lang = lang;
-    
-    // Dispatch a custom language change event for components to listen to
-    window.dispatchEvent(new CustomEvent('languagechange', {
-      detail: { language: lang }
-    }));
   };
 
   const applyDarkMode = (isDark: boolean) => {
@@ -327,6 +313,7 @@ const Settings = ({
       language: 'en',
       keepScreenOn: true,
       is24Hour: true,
+      showStopwatch: true,
       enableVibration: true,
       autoStartTimers: false,
       hideCompleted: false,

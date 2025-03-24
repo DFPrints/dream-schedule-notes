@@ -51,18 +51,6 @@ const SettingsPage = () => {
       console.error("Error loading settings from localStorage:", error);
     }
   }, []);
-  
-  // Ensure dark mode is applied when navigating to this page
-  useEffect(() => {
-    // This will maintain the dark mode state when navigating to the settings page
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    if (isDarkMode !== settings.darkMode) {
-      setSettings(prev => ({
-        ...prev,
-        darkMode: isDarkMode
-      }));
-    }
-  }, []);
 
   // Update settings
   const updateSettings = (newSettings: any) => {
@@ -106,11 +94,10 @@ const SettingsPage = () => {
         description: `App language set to ${languages[newSettings.language] || newSettings.language}`,
       });
       
-      // Force re-render of components by triggering a language change event
+      // Force re-render of components by triggering a small state update
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('languagechange', {
-          detail: { language: newSettings.language }
-        }));
+        const event = new Event('languagechange');
+        window.dispatchEvent(event);
       }, 100);
     }
     

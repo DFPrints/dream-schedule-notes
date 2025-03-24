@@ -4,16 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { StarIcon, HeartIcon, FeatherIcon, SaveIcon, TrashIcon, PlusIcon, TagIcon, FolderIcon, PaletteIcon } from 'lucide-react';
+import { StarIcon, HeartIcon, FeatherIcon, SaveIcon, TrashIcon, PlusIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface Note {
   id: string;
@@ -61,8 +53,6 @@ const Notes = ({
   const [editMode, setEditMode] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedContent, setEditedContent] = useState('');
-  const [editedCategory, setEditedCategory] = useState('');
-  const [editedColor, setEditedColor] = useState('');
 
   // Sort notes: pinned first, then by updatedAt
   const sortedNotes = [...notes].sort((a, b) => {
@@ -77,8 +67,6 @@ const Notes = ({
     setEditMode(false);
     setEditedTitle(note.title);
     setEditedContent(note.content);
-    setEditedCategory(note.category || '');
-    setEditedColor(note.color || '');
   };
 
   // Handle edit mode toggle
@@ -91,8 +79,6 @@ const Notes = ({
         ...activeNote,
         title: editedTitle,
         content: editedContent,
-        category: editedCategory || activeNote.category,
-        color: editedColor || activeNote.color,
         updatedAt: new Date()
       };
       onUpdateNote?.(updatedNote);
@@ -129,65 +115,6 @@ const Notes = ({
     setEditMode(false);
   };
 
-  // Handle tag toggle
-  const handleToggleTag = (tag: string) => {
-    if (!activeNote || !onToggleTag) return;
-    onToggleTag(activeNote.id, tag);
-    
-    const currentTags = activeNote.tags || [];
-    const updatedTags = currentTags.includes(tag)
-      ? currentTags.filter(t => t !== tag)
-      : [...currentTags, tag];
-    
-    setActiveNote({
-      ...activeNote,
-      tags: updatedTags
-    });
-  };
-
-  // Handle category change
-  const handleCategoryChange = (category: string) => {
-    if (!activeNote || !onChangeCategory) return;
-    onChangeCategory(activeNote.id, category);
-    setEditedCategory(category);
-    
-    setActiveNote({
-      ...activeNote,
-      category
-    });
-  };
-
-  // Handle color change
-  const handleColorChange = (color: string) => {
-    if (!activeNote || !onChangeColor) return;
-    onChangeColor(activeNote.id, color);
-    setEditedColor(color);
-    
-    setActiveNote({
-      ...activeNote,
-      color
-    });
-  };
-
-  // Get color style for note
-  const getNoteColorStyle = (colorValue?: string) => {
-    if (!colorValue || colorValue === 'default') return {};
-    
-    const colorMap: Record<string, string> = {
-      'purple': '#9b87f5',
-      'blue': '#0EA5E9',
-      'green': '#10B981',
-      'yellow': '#F59E0B',
-      'orange': '#F97316',
-      'red': '#EF4444',
-      'pink': '#EC4899'
-    };
-    
-    return {
-      borderLeft: `4px solid ${colorMap[colorValue] || 'var(--primary)'}`,
-    };
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Notes List */}
@@ -215,7 +142,6 @@ const Notes = ({
                     ? "neo-morphism" 
                     : "glass-card hover:shadow-md",
                 )}
-                style={getNoteColorStyle(note.color)}
                 onClick={() => handleSelectNote(note)}
               >
                 <div className="flex items-start justify-between">
@@ -235,16 +161,9 @@ const Notes = ({
                     )}
                   </div>
                 </div>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-muted-foreground">
-                    {note.updatedAt.toLocaleDateString()}
-                  </p>
-                  {note.category && (
-                    <Badge variant="outline" className="text-xs">
-                      {note.category}
-                    </Badge>
-                  )}
-                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {note.updatedAt.toLocaleDateString()}
+                </p>
               </div>
             ))
           ) : (
@@ -277,14 +196,7 @@ const Notes = ({
                   className="font-medium text-lg h-9"
                 />
               ) : (
-                <div className="flex flex-col">
-                  <CardTitle>{activeNote.title || "Untitled"}</CardTitle>
-                  <div className="flex items-center mt-1 space-x-2 text-xs text-muted-foreground">
-                    <span>Created: {activeNote.createdAt.toLocaleString()}</span>
-                    <span>•</span>
-                    <span>Updated: {activeNote.updatedAt.toLocaleString()}</span>
-                  </div>
-                </div>
+                <CardTitle>{activeNote.title || "Untitled"}</CardTitle>
               )}
               <div className="flex items-center space-x-1">
                 <Button
@@ -317,128 +229,6 @@ const Notes = ({
                 </Button>
               </div>
             </CardHeader>
-            
-            {!editMode && (
-              <div className="px-6 pt-0 pb-2">
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {activeNote.category && (
-                    <div className="flex items-center">
-                      <FolderIcon className="h-3 w-3 mr-1 text-primary" />
-                      <Badge variant="secondary">{activeNote.category}</Badge>
-                    </div>
-                  )}
-                  
-                  {activeNote.tags && activeNote.tags.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <TagIcon className="h-3 w-3 text-primary" />
-                      <div className="flex flex-wrap gap-1">
-                        {activeNote.tags.map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeNote.color && activeNote.color !== 'default' && (
-                    <div className="flex items-center">
-                      <PaletteIcon className="h-3 w-3 mr-1 text-primary" />
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: 
-                            activeNote.color === 'purple' ? '#9b87f5' :
-                            activeNote.color === 'blue' ? '#0EA5E9' :
-                            activeNote.color === 'green' ? '#10B981' :
-                            activeNote.color === 'yellow' ? '#F59E0B' :
-                            activeNote.color === 'orange' ? '#F97316' :
-                            activeNote.color === 'red' ? '#EF4444' :
-                            activeNote.color === 'pink' ? '#EC4899' : 'var(--primary)'
-                        }} 
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {editMode && (
-              <div className="px-6 pt-0 pb-2">
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <p className="text-xs font-medium mb-1">Category</p>
-                    <Select 
-                      value={editedCategory} 
-                      onValueChange={handleCategoryChange}
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <p className="text-xs font-medium mb-1">Color</p>
-                    <Select 
-                      value={editedColor || 'default'} 
-                      onValueChange={handleColorChange}
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue placeholder="Select color" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colorOptions.map(color => (
-                          <SelectItem key={color.value} value={color.value}>
-                            <div className="flex items-center">
-                              <div 
-                                className="w-3 h-3 rounded-full mr-2"
-                                style={{ 
-                                  backgroundColor: 
-                                    color.value === 'default' ? 'var(--primary)' :
-                                    color.value === 'purple' ? '#9b87f5' :
-                                    color.value === 'blue' ? '#0EA5E9' :
-                                    color.value === 'green' ? '#10B981' :
-                                    color.value === 'yellow' ? '#F59E0B' :
-                                    color.value === 'orange' ? '#F97316' :
-                                    color.value === 'red' ? '#EF4444' :
-                                    color.value === 'pink' ? '#EC4899' : 'var(--primary)'
-                                }} 
-                              />
-                              {color.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="mb-3">
-                  <p className="text-xs font-medium mb-1">Tags</p>
-                  <div className="flex flex-wrap gap-1">
-                    {availableTags.map(tag => (
-                      <Badge
-                        key={tag}
-                        variant={activeNote.tags?.includes(tag) ? "default" : "outline"}
-                        className="cursor-pointer text-xs"
-                        onClick={() => handleToggleTag(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            
             <CardContent>
               {editMode ? (
                 <Textarea

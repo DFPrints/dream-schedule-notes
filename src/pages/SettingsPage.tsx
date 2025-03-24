@@ -16,7 +16,6 @@ const SettingsPage = () => {
     language: 'en',
     keepScreenOn: true,
     is24Hour: true,
-    showStopwatch: true,
     enableVibration: true,
     autoStartTimers: false,
     hideCompleted: false,
@@ -81,6 +80,7 @@ const SettingsPage = () => {
     // If language was changed
     if (newSettings.language !== undefined && newSettings.language !== settings.language) {
       document.documentElement.lang = newSettings.language;
+      document.querySelector('html')?.setAttribute('lang', newSettings.language);
       
       const languages: Record<string, string> = {
         en: "English",
@@ -93,11 +93,20 @@ const SettingsPage = () => {
         title: "Language Changed",
         description: `App language set to ${languages[newSettings.language] || newSettings.language}`,
       });
+      
+      // Force re-render of components by triggering a small state update
+      setTimeout(() => {
+        const event = new Event('languagechange');
+        window.dispatchEvent(event);
+      }, 100);
     }
     
     // Apply screen wake lock if enabled
-    if (newSettings.keepScreenOn) {
-      applyScreenWakeLock();
+    if (newSettings.keepScreenOn !== undefined && 
+        newSettings.keepScreenOn !== settings.keepScreenOn) {
+      if (newSettings.keepScreenOn) {
+        applyScreenWakeLock();
+      }
     }
   };
   

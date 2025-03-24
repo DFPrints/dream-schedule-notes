@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/Layout';
 import Notes from '@/components/Notes';
 import { toast } from '@/components/ui/use-toast';
@@ -15,7 +15,9 @@ import {
   SearchIcon, 
   SlidersIcon,
   CalendarIcon,
-  TagIcon
+  TagIcon,
+  XIcon,
+  PlusIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,6 +28,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Note {
   id: string;
@@ -112,28 +125,82 @@ const NotesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('updatedAt');
+  
+  // New note dialog state
+  const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNoteCategory, setNewNoteCategory] = useState('Personal');
+  const [newNoteTags, setNewNoteTags] = useState<string[]>([]);
+  const [newNoteColor, setNewNoteColor] = useState('default');
+  const [newCustomTag, setNewCustomTag] = useState('');
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  
+  const newNoteContentRef = useRef<HTMLTextAreaElement>(null);
 
   // Add new note
   const addNote = () => {
+    setIsNewNoteDialogOpen(true);
+    setNewNoteTitle('');
+    setNewNoteContent('');
+    setNewNoteCategory(selectedCategory !== 'All' ? selectedCategory : 'Personal');
+    setNewNoteTags([]);
+    setNewNoteColor('default');
+    
+    // Focus the content textarea after dialog opens
+    setTimeout(() => {
+      newNoteContentRef.current?.focus();
+    }, 50);
+  };
+
+  const createNewNote = () => {
+    // Validate note content
+    if (!newNoteContent.trim()) {
+      toast({
+        title: "Content Required",
+        description: "Please add some content to your note.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const newNote: Note = {
       id: uuidv4(),
-      title: 'Untitled Note',
-      content: '',
+      title: newNoteTitle.trim() || 'Untitled Note',
+      content: newNoteContent,
       createdAt: new Date(),
       updatedAt: new Date(),
       pinned: false,
       favorite: false,
-      category: selectedCategory !== 'All' ? selectedCategory : 'Personal',
-      tags: [],
-      color: 'default'
+      category: newNoteCategory,
+      tags: newNoteTags,
+      color: newNoteColor
     };
     
     setNotes([newNote, ...notes]);
+    setIsNewNoteDialogOpen(false);
     
     toast({
       title: "Note Created",
       description: "A new note has been created.",
     });
+  };
+
+  // Add a custom tag
+  const addCustomTag = () => {
+    if (!newCustomTag.trim()) return;
+    
+    const tag = newCustomTag.trim().toLowerCase().replace(/\s+/g, '-');
+    
+    if (!customTags.includes(tag) && !availableTags.includes(tag)) {
+      setCustomTags([...customTags, tag]);
+    }
+    
+    if (!newNoteTags.includes(tag)) {
+      setNewNoteTags([...newNoteTags, tag]);
+    }
+    
+    setNewCustomTag('');
   };
 
   // Update note
@@ -240,6 +307,11 @@ const NotesPage = () => {
     }
   });
 
+  // Get all available tags including custom ones
+  const getAllTags = () => {
+    return [...new Set([...availableTags, ...customTags])];
+  };
+
   // Save to localStorage whenever notes change
   useEffect(() => {
     try {
@@ -262,6 +334,11 @@ const NotesPage = () => {
           updatedAt: new Date(note.updatedAt)
         }));
         setNotes(notesWithDates);
+        
+        // Extract any custom tags
+        const allTags = parsedNotes.flatMap((note: any) => note.tags || []);
+        const savedCustomTags = [...new Set(allTags.filter((tag: string) => !availableTags.includes(tag)))];
+        setCustomTags(savedCustomTags);
       }
     } catch (error) {
       console.error('Error loading notes from localStorage:', error);
@@ -343,7 +420,7 @@ const NotesPage = () => {
                 <div className="p-2 bg-background/50 rounded-md border animate-fade-in">
                   <p className="text-sm font-medium mb-2">Filter by Tags:</p>
                   <div className="flex flex-wrap gap-1">
-                    {availableTags.map(tag => (
+                    {[...availableTags, ...customTags].map(tag => (
                       <Badge
                         key={tag}
                         variant={selectedTags.includes(tag) ? "default" : "outline"}
@@ -371,7 +448,7 @@ const NotesPage = () => {
           onToggleTag={toggleTag}
           onChangeCategory={changeNoteCategory}
           onChangeColor={changeNoteColor}
-          availableTags={availableTags}
+          availableTags={getAllTags()}
           categories={noteCategories.filter(cat => cat !== 'All')}
           colorOptions={noteColors}
         />
@@ -390,6 +467,170 @@ const NotesPage = () => {
             </Button>
           </div>
         )}
+        
+        {/* New Note Dialog */}
+        <Dialog open={isNewNoteDialogOpen} onOpenChange={setIsNewNoteDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Note</DialogTitle>
+              <DialogDescription>
+                Add a new note to your collection
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="title">Title (Optional)</Label>
+                <Input
+                  id="title"
+                  value={newNoteTitle}
+                  onChange={(e) => setNewNoteTitle(e.target.value)}
+                  placeholder="Untitled Note"
+                />
+              </div>
+              
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="content">Content</Label>
+                <Textarea
+                  id="content"
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Write your thoughts here..."
+                  className="min-h-[200px] resize-vertical"
+                  ref={newNoteContentRef}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select 
+                    value={newNoteCategory} 
+                    onValueChange={setNewNoteCategory}
+                  >
+                    <SelectTrigger className="w-full mt-1.5">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {noteCategories.filter(cat => cat !== 'All').map(category => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="color">Color</Label>
+                  <Select 
+                    value={newNoteColor} 
+                    onValueChange={setNewNoteColor}
+                  >
+                    <SelectTrigger className="w-full mt-1.5">
+                      <SelectValue placeholder="Select color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {noteColors.map(color => (
+                        <SelectItem key={color.value} value={color.value}>
+                          <div className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-2"
+                              style={{ 
+                                backgroundColor: 
+                                  color.value === 'default' ? 'var(--primary)' :
+                                  color.value === 'purple' ? '#9b87f5' :
+                                  color.value === 'blue' ? '#0EA5E9' :
+                                  color.value === 'green' ? '#10B981' :
+                                  color.value === 'yellow' ? '#F59E0B' :
+                                  color.value === 'orange' ? '#F97316' :
+                                  color.value === 'red' ? '#EF4444' :
+                                  color.value === 'pink' ? '#EC4899' : 'var(--primary)'
+                              }} 
+                            />
+                            {color.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Tags</Label>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {getAllTags().map(tag => (
+                    <Badge
+                      key={tag}
+                      variant={newNoteTags.includes(tag) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (newNoteTags.includes(tag)) {
+                          setNewNoteTags(newNoteTags.filter(t => t !== tag));
+                        } else {
+                          setNewNoteTags([...newNoteTags, tag]);
+                        }
+                      }}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex items-center space-x-2 mt-3">
+                  <Input
+                    placeholder="Add custom tag..."
+                    value={newCustomTag}
+                    onChange={(e) => setNewCustomTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomTag();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={addCustomTag}
+                    disabled={!newCustomTag.trim()}
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter className="flex justify-between items-center">
+              <div>
+                {newNoteTags.length > 0 && (
+                  <div className="flex items-center text-sm text-muted-foreground space-x-1">
+                    <TagIcon className="h-3 w-3" />
+                    <span>{newNoteTags.length} tags</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsNewNoteDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={createNewNote}
+                >
+                  Create Note
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

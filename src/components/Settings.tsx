@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -24,10 +23,6 @@ import {
   EyeOffIcon
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { StopwatchComponent } from './StopwatchComponent';
-
-// Use TimerIcon as a replacement for StopwatchIcon
-const StopwatchIcon = TimerIcon;
 
 interface SettingsProps {
   settings?: {
@@ -602,26 +597,6 @@ const Settings = ({
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 rounded-full bg-primary/10">
-                <StopwatchIcon className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <Label>Show Stopwatch</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable stopwatch feature
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={settings.showStopwatch || false}
-              onCheckedChange={(checked) => 
-                handleSettingChange('showStopwatch', checked)
-              }
-            />
-          </div>
-
           <Separator className="my-4" />
           
           {/* Sleep Hours section */}
@@ -662,22 +637,6 @@ const Settings = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* Stopwatch card */}
-      {settings.showStopwatch && (
-        <Card className="neo-morphism border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <StopwatchIcon className="h-5 w-5 mr-2 text-primary" />
-              Stopwatch
-            </CardTitle>
-            <CardDescription>Track elapsed time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StopwatchComponent />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Device settings */}
       <Card className="neo-morphism border-0">

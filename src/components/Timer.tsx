@@ -10,13 +10,11 @@ import {
   AlertCircleIcon, 
   MoonIcon, 
   RepeatIcon,
-  CalendarIcon,
   AlarmClockIcon,
   SaveIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useForm } from 'react-hook-form';
 import {
   Form,
   FormControl,
@@ -28,6 +26,12 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 
 interface TimerProps {
   defaultMinutes?: number;
@@ -88,6 +92,7 @@ const Timer = ({
   const [isSleepTime, setIsSleepTime] = useState(false);
   const [showSavePreset, setShowSavePreset] = useState(false);
   const [presetName, setPresetName] = useState("");
+  const [showCustomTimer, setShowCustomTimer] = useState(false);
   
   const [hoursInput, setHoursInput] = useState("0");
   const [minutesInput, setMinutesInput] = useState(defaultMinutes.toString());
@@ -107,11 +112,11 @@ const Timer = ({
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     
-    const formattedHrs = hrs > 0 ? `${hrs.toString().padStart(2, '0')}:` : '';
-    const formattedMins = `${mins.toString().padStart(2, '0')}:`;
-    const formattedSecs = secs.toString().padStart(2, '0');
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     
-    return `${formattedHrs}${formattedMins}${formattedSecs}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const formatTimeString = (timeString: string) => {
@@ -391,6 +396,7 @@ const Timer = ({
     }
     
     setIsEditing(!isEditing);
+    setShowCustomTimer(false);
   };
 
   const toggleRepeat = (value: boolean) => {
@@ -446,164 +452,164 @@ const Timer = ({
 
   return (
     <div className="flex flex-col items-center">
-      <div 
-        className={cn(
-          "relative w-64 h-64 rounded-full mb-8 cursor-pointer neo-morphism flex items-center justify-center",
-          isSleepTime && isPauseDuringSleep && "bg-muted/30"
-        )}
-        onClick={toggleEdit}
-      >
-        <svg className="absolute inset-0 w-full h-full -rotate-90">
-          <circle
-            cx="128"
-            cy="128"
-            r="120"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-            className="text-muted opacity-20"
-          />
-          <circle
-            cx="128"
-            cy="128"
-            r="120"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="none"
-            strokeLinecap="round"
-            className={cn(
-              "text-primary transition-all duration-1000 ease-out-expo",
-              isSleepTime && isPauseDuringSleep && "text-muted"
-            )}
-            style={{
-              strokeDasharray: 2 * Math.PI * 120,
-              strokeDashoffset: 2 * Math.PI * 120 * (1 - progressPercent / 100),
-            }}
-          />
-        </svg>
-
-        <div className="z-10 text-center">
-          {isEditing ? (
-            <div className="flex flex-col items-center space-y-2 px-4">
-              {isManualDuration ? (
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      type="number"
-                      value={hoursInput}
-                      onChange={handleHoursInputChange}
-                      onBlur={handleInputBlur}
-                      onKeyDown={handleInputKeyDown}
-                      className="w-14 text-center text-lg h-10"
-                      min="0"
-                      max="23"
-                    />
-                    <span className="text-sm">h</span>
-                    <Input
-                      type="number"
-                      value={minutesInput}
-                      onChange={handleMinutesInputChange}
-                      onBlur={handleInputBlur}
-                      onKeyDown={handleInputKeyDown}
-                      className="w-14 text-center text-lg h-10"
-                      min="0"
-                      max="59"
-                    />
-                    <span className="text-sm">m</span>
-                    <Input
-                      type="number"
-                      value={secondsInput}
-                      onChange={handleSecondsInputChange}
-                      onBlur={handleInputBlur}
-                      onKeyDown={handleInputKeyDown}
-                      className="w-14 text-center text-lg h-10"
-                      min="0"
-                      max="59"
-                    />
-                    <span className="text-sm">s</span>
+      <div className="mb-4 w-full flex justify-center">
+        <Card className="w-full max-w-sm neo-morphism border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-center">Custom Timer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {showCustomTimer ? (
+              <div className="space-y-4">
+                {isManualDuration ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Input
+                        type="number"
+                        value={hoursInput}
+                        onChange={handleHoursInputChange}
+                        onBlur={handleInputBlur}
+                        onKeyDown={handleInputKeyDown}
+                        className="w-14 text-center text-lg h-10"
+                        min="0"
+                        max="23"
+                      />
+                      <span className="text-sm">h</span>
+                      <Input
+                        type="number"
+                        value={minutesInput}
+                        onChange={handleMinutesInputChange}
+                        onBlur={handleInputBlur}
+                        onKeyDown={handleInputKeyDown}
+                        className="w-14 text-center text-lg h-10"
+                        min="0"
+                        max="59"
+                      />
+                      <span className="text-sm">m</span>
+                      <Input
+                        type="number"
+                        value={secondsInput}
+                        onChange={handleSecondsInputChange}
+                        onBlur={handleInputBlur}
+                        onKeyDown={handleInputKeyDown}
+                        className="w-14 text-center text-lg h-10"
+                        min="0"
+                        max="59"
+                      />
+                      <span className="text-sm">s</span>
+                    </div>
+                    <div className="flex justify-between w-full">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => setIsManualDuration(false)}
+                      >
+                        Simple
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          handleManualTimeChange();
+                          setShowCustomTimer(false);
+                        }}
+                      >
+                        Set
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-between w-full">
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => setIsManualDuration(false)}
-                    >
-                      Simple
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={saveTimeSetting}
-                    >
-                      Set
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center space-y-2">
-                  <Input
-                    type="number"
-                    value={timeSetting}
-                    onChange={handleTimeSettingChange}
-                    className="w-24 text-center text-2xl h-12"
-                    min="1"
-                  />
-                  <Label className="text-sm text-muted-foreground">Minutes</Label>
-                  <div className="flex justify-between w-full">
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => setIsManualDuration(true)}
-                    >
-                      Advanced
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={saveTimeSetting}
-                    >
-                      Set
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full"
-                onClick={() => setShowSavePreset(true)}
-              >
-                <SaveIcon className="h-3 w-3 mr-1" />
-                Save as Preset
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <span className="text-5xl font-light tracking-tighter">{formatTime(timeLeft)}</span>
-              <span className="text-sm text-muted-foreground mt-2">
-                {isSleepTime && isPauseDuringSleep ? (
-                  <span className="flex items-center">
-                    <MoonIcon className="h-3 w-3 mr-1" />
-                    Paused (Sleep Hours)
-                  </span>
                 ) : (
-                  isRunning ? "Running" : timeLeft === 0 ? `Completed ${completionCount > 1 ? `(${completionCount}×)` : ''}` : "Ready"
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-full flex justify-center">
+                      <Input
+                        type="number"
+                        value={timeSetting}
+                        onChange={handleTimeSettingChange}
+                        className="w-28 text-center text-lg h-10"
+                        min="1"
+                      />
+                    </div>
+                    <Label className="text-sm text-muted-foreground">Minutes</Label>
+                    <div className="flex justify-between w-full">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => setIsManualDuration(true)}
+                      >
+                        Advanced
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          saveTimeSetting();
+                          setShowCustomTimer(false);
+                        }}
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        Set
+                      </Button>
+                    </div>
+                  </div>
                 )}
-              </span>
-              {isRepeating && repeatEvery > 0 && (
-                <div className="flex items-center text-xs text-primary/70 mt-1">
-                  <RepeatIcon className="h-3 w-3 mr-1" />
-                  <span>Every {repeatEvery} {repeatEvery === 1 ? 'minute' : 'minutes'}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowSavePreset(true)}
+                >
+                  <SaveIcon className="h-3 w-3 mr-1" />
+                  Save as Preset
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="relative w-48 h-48 mx-auto rounded-full mb-4 cursor-pointer neo-morphism flex items-center justify-center"
+                onClick={() => setShowCustomTimer(true)}
+              >
+                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="90"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                    className="text-muted opacity-20"
+                  />
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="90"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeLinecap="round"
+                    className={cn(
+                      "text-primary transition-all duration-1000 ease-out-expo",
+                      isSleepTime && isPauseDuringSleep && "text-muted"
+                    )}
+                    style={{
+                      strokeDasharray: 2 * Math.PI * 90,
+                      strokeDashoffset: 2 * Math.PI * 90 * (1 - progressPercent / 100),
+                    }}
+                  />
+                </svg>
+
+                <div className="z-10 text-center">
+                  <span className="text-3xl font-light tracking-tighter">{formatTime(timeLeft)}</span>
+                  <span className="text-sm text-muted-foreground mt-2 block">
+                    {isSleepTime && isPauseDuringSleep ? (
+                      <span className="flex items-center justify-center">
+                        <MoonIcon className="h-3 w-3 mr-1" />
+                        Paused
+                      </span>
+                    ) : (
+                      isRunning ? "Running" : timeLeft === 0 ? `Completed ${completionCount > 1 ? `(${completionCount}×)` : ''}` : "Ready"
+                    )}
+                  </span>
                 </div>
-              )}
-              {isPauseDuringSleep && (
-                <div className="flex items-center text-xs text-primary/70 mt-1">
-                  <MoonIcon className="h-3 w-3 mr-1" />
-                  <span>Pauses {formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {showSavePreset && (

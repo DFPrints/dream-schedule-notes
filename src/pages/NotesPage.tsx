@@ -17,7 +17,8 @@ import {
   CalendarIcon,
   TagIcon,
   XIcon,
-  PlusIcon
+  PlusIcon,
+  FolderPlusIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,8 +54,8 @@ interface Note {
   color?: string;
 }
 
-// Available note categories
-const noteCategories = [
+// Available note categories - we will append custom categories to this
+const defaultNoteCategories = [
   "Personal",
   "Work",
   "Manifestation",
@@ -125,6 +126,9 @@ const NotesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('updatedAt');
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   
   // New note dialog state
   const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = useState(false);
@@ -137,6 +141,80 @@ const NotesPage = () => {
   const [customTags, setCustomTags] = useState<string[]>([]);
   
   const newNoteContentRef = useRef<HTMLTextAreaElement>(null);
+
+  // Get all note categories including custom ones
+  const getAllCategories = () => {
+    const allCats = [...defaultNoteCategories.filter(cat => cat !== 'All'), ...customCategories, 'Custom...'];
+    return ['All', ...allCats];
+  };
+  
+  // Save custom categories to localStorage
+  const saveCustomCategories = (categories: string[]) => {
+    try {
+      localStorage.setItem('notesCustomCategories', JSON.stringify(categories));
+    } catch (error) {
+      console.error("Error saving custom categories:", error);
+    }
+  };
+  
+  // Add new custom category
+  const addCustomCategory = () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Category name required",
+        description: "Please enter a name for your category",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const formattedName = newCategoryName.trim();
+    
+    if (customCategories.includes(formattedName) || defaultNoteCategories.includes(formattedName)) {
+      toast({
+        title: "Category already exists",
+        description: "Please use a different name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const updatedCategories = [...customCategories, formattedName];
+    setCustomCategories(updatedCategories);
+    saveCustomCategories(updatedCategories);
+    setNewCategoryName('');
+    setIsAddCategoryOpen(false);
+    
+    // Set the newly created category as the selected one
+    if (isNewNoteDialogOpen) {
+      setNewNoteCategory(formattedName);
+    } else {
+      setSelectedCategory(formattedName);
+    }
+    
+    toast({
+      title: "Category created",
+      description: `New category "${formattedName}" has been created`
+    });
+  };
+  
+  // Handle category selection
+  const handleCategoryChange = (value: string) => {
+    if (value === 'Custom...') {
+      setIsAddCategoryOpen(true);
+    } else {
+      setSelectedCategory(value);
+    }
+  };
+  
+  // Handle new note category selection
+  const handleNewNoteCategoryChange = (value: string) => {
+    if (value === 'Custom...') {
+      setIsAddCategoryOpen(true);
+    } else {
+      setNewNoteCategory(value);
+    }
+  };
 
   // Add new note
   const addNote = () => {
@@ -324,6 +402,7 @@ const NotesPage = () => {
   // Load from localStorage on component mount
   useEffect(() => {
     try {
+      // Load notes
       const savedNotes = localStorage.getItem('manifestNotes');
       if (savedNotes) {
         const parsedNotes = JSON.parse(savedNotes);
@@ -344,8 +423,25 @@ const NotesPage = () => {
         
         setCustomTags(savedCustomTags);
       }
+      
+      // Load custom categories
+      const savedCategories = localStorage.getItem('notesCustomCategories');
+      if (savedCategories) {
+        setCustomCategories(JSON.parse(savedCategories));
+      }
+      
+      // Apply dark mode from settings if present
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        if (parsedSettings.darkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
     } catch (error) {
-      console.error('Error loading notes from localStorage:', error);
+      console.error('Error loading data from localStorage:', error);
     }
   }, []);
 
@@ -383,15 +479,20 @@ const NotesPage = () => {
                 <div className="flex items-center space-x-2">
                   <Select 
                     value={selectedCategory} 
-                    onValueChange={setSelectedCategory}
+                    onValueChange={handleCategoryChange}
                   >
                     <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {noteCategories.map(category => (
+                      {getAllCategories().map(category => (
                         <SelectItem key={category} value={category}>
-                          {category}
+                          {category === 'Custom...' ? (
+                            <span className="flex items-center">
+                              <FolderPlusIcon className="h-3.5 w-3.5 mr-1.5" />
+                              {category}
+                            </span>
+                          ) : category}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -453,7 +554,7 @@ const NotesPage = () => {
           onChangeCategory={changeNoteCategory}
           onChangeColor={changeNoteColor}
           availableTags={getAllTags()}
-          categories={noteCategories.filter(cat => cat !== 'All')}
+          categories={getAllCategories().filter(cat => cat !== 'All')}
           colorOptions={noteColors}
         />
 
@@ -510,15 +611,20 @@ const NotesPage = () => {
                   <Label htmlFor="category">Category</Label>
                   <Select 
                     value={newNoteCategory} 
-                    onValueChange={setNewNoteCategory}
+                    onValueChange={handleNewNoteCategoryChange}
                   >
                     <SelectTrigger className="w-full mt-1.5">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {noteCategories.filter(cat => cat !== 'All').map(category => (
+                      {getAllCategories().filter(cat => cat !== 'All').map(category => (
                         <SelectItem key={category} value={category}>
-                          {category}
+                          {category === 'Custom...' ? (
+                            <span className="flex items-center">
+                              <FolderPlusIcon className="h-3.5 w-3.5 mr-1.5" />
+                              {category}
+                            </span>
+                          ) : category}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -632,6 +738,44 @@ const NotesPage = () => {
                   Create Note
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Add Category Dialog */}
+        <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Custom Category</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="categoryName">Category Name</Label>
+                <Input
+                  id="categoryName"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Enter category name"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomCategory();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAddCategoryOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={addCustomCategory}>
+                Create Category
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

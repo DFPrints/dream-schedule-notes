@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Timer from '@/components/Timer';
@@ -25,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TimerInputFix } from '@/components/TimerInputFix';
-import { StopwatchComponent } from '@/components/StopwatchComponent';
 
 interface TimerPreset {
   id: string;
@@ -91,7 +91,7 @@ const TimerPage = () => {
   const [sleepHoursEnd, setSleepHoursEnd] = useState('07:00');
   const [showSleepSettings, setShowSleepSettings] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
-  const [showStopwatch, setShowStopwatch] = useState(false);
+  const [customTimerMinutes, setCustomTimerMinutes] = useState(20);
 
   useEffect(() => {
     try {
@@ -172,6 +172,22 @@ const TimerPage = () => {
     toast({
       title: "Timer Started",
       description: `Starting "${preset.name}" timer for ${preset.minutes} minutes.`,
+    });
+  };
+
+  const startCustomTimer = () => {
+    const customTimer: TimerPreset = {
+      id: 'custom',
+      name: 'Custom Timer',
+      minutes: customTimerMinutes,
+      pauseDuringSleep: false,
+      activeDays: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    };
+    
+    setActiveTimer(customTimer);
+    toast({
+      title: "Timer Started",
+      description: `Starting custom timer for ${customTimerMinutes} minutes.`,
     });
   };
 
@@ -361,12 +377,45 @@ const TimerPage = () => {
           </Card>
         )}
 
+        {/* Custom Timer Input Section */}
+        {!activeTimer && (
+          <div className="flex justify-center mb-6">
+            <Card className="w-full max-w-md neo-morphism border-0">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center">
+                  <TimerIcon className="h-5 w-5 mr-2 text-primary" />
+                  Quick Timer
+                  <span className="ml-auto text-xs text-muted-foreground">Set duration</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-center">
+                    <TimerInputFix
+                      initialValue={customTimerMinutes}
+                      onChange={setCustomTimerMinutes}
+                      min={1}
+                      max={1440}
+                    />
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    onClick={startCustomTimer}
+                  >
+                    Start Timer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="flex justify-center">
           {activeTimer ? (
             <div className="w-full max-w-md">
-              <h2 className="text-lg font-medium mb-6">
+              <h2 className="text-lg font-medium mb-6 text-center">
                 {activeTimer.name}
-                <div className="flex gap-1 mt-1">
+                <div className="flex gap-1 mt-1 justify-center">
                   {activeTimer.pauseDuringSleep && (
                     <Badge variant="outline" className="text-xs flex items-center">
                       <MoonIcon className="h-3 w-3 mr-1" />
@@ -398,14 +447,15 @@ const TimerPage = () => {
                 sleepHoursEnd={sleepHoursEnd}
                 is24Hour={is24Hour}
               />
-              <Button
-                variant="ghost"
-                className="mt-8"
-                onClick={() => setActiveTimer(null)}
-              >
-                <TimerOffIcon className="h-4 w-4 mr-2" />
-                Cancel Timer
-              </Button>
+              <div className="flex justify-center mt-8">
+                <Button
+                  variant="ghost"
+                  onClick={() => setActiveTimer(null)}
+                >
+                  <TimerOffIcon className="h-4 w-4 mr-2" />
+                  Cancel Timer
+                </Button>
+              </div>
             </div>
           ) : (
             <Card className="w-full max-w-md neo-morphism border-0">
@@ -413,17 +463,8 @@ const TimerPage = () => {
                 <ClockIcon className="h-12 w-12 mx-auto text-primary/50 mb-4" />
                 <h3 className="text-lg font-medium">No Active Timer</h3>
                 <p className="text-muted-foreground mt-1 mb-4">
-                  Select a preset or create a new timer
+                  Use quick timer above or select a preset below
                 </p>
-                <Timer 
-                  defaultMinutes={20} 
-                  onComplete={handleTimerComplete}
-                  manualDuration={true}
-                  sleepHoursStart={sleepHoursStart}
-                  sleepHoursEnd={sleepHoursEnd}
-                  is24Hour={is24Hour}
-                  onSavePreset={handleSavePreset}
-                />
               </CardContent>
             </Card>
           )}

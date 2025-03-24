@@ -335,9 +335,13 @@ const NotesPage = () => {
         }));
         setNotes(notesWithDates);
         
-        // Extract any custom tags
+        // Extract any custom tags - fix the type error here
         const allTags = parsedNotes.flatMap((note: any) => note.tags || []);
-        const savedCustomTags = [...new Set(allTags.filter((tag: string) => !availableTags.includes(tag)))];
+        // Add explicit type checking to ensure we're only setting string values
+        const savedCustomTags = [...new Set(allTags.filter((tag: any) => 
+          typeof tag === 'string' && !availableTags.includes(tag)
+        ))] as string[];
+        
         setCustomTags(savedCustomTags);
       }
     } catch (error) {

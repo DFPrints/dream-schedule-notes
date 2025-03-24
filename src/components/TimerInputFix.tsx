@@ -16,7 +16,7 @@ export const TimerInputFix = ({
   min = 1,
   max = 1440
 }: TimerInputFixProps) => {
-  const [inputValue, setInputValue] = useState(initialValue.toString());
+  const [inputValue, setInputValue] = useState<string>(initialValue.toString());
   const timeoutRef = useRef<number | null>(null);
   
   // Update local state when initialValue changes from parent
@@ -25,8 +25,10 @@ export const TimerInputFix = ({
   }, [initialValue]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    
     // Always update the displayed value immediately
-    setInputValue(e.target.value);
+    setInputValue(newValue);
     
     // Debounce the actual change notification
     if (timeoutRef.current) {
@@ -35,7 +37,7 @@ export const TimerInputFix = ({
     
     timeoutRef.current = window.setTimeout(() => {
       // Parse the value, defaulting to min if invalid
-      let numValue = parseInt(e.target.value) || min;
+      let numValue = parseInt(newValue) || min;
       
       // Enforce min/max constraints
       if (numValue < min) numValue = min;
@@ -46,7 +48,7 @@ export const TimerInputFix = ({
       
       // Notify parent of the change
       onChange(numValue);
-    }, 500); // Wait for user to finish typing
+    }, 300); // Reduced the timeout for better responsiveness
   };
   
   // Clean up timeout on unmount

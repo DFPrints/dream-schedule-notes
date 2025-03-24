@@ -19,6 +19,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Timer', path: '/timer', icon: TimerIcon },
+    { name: 'Stopwatch', path: '/stopwatch', icon: TimerIcon },
     { name: 'Calendar', path: '/calendar', icon: CalendarIcon },
     { name: 'Notes', path: '/notes', icon: FileTextIcon },
     { name: 'Voice', path: '/voice-memo', icon: MicIcon },

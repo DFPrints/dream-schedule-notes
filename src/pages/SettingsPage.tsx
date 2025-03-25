@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Settings from '@/components/Settings';
@@ -5,7 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState({
-    darkMode: false,
+    darkMode: true, // Changed default to true
     notificationsEnabled: true,
     soundEnabled: true,
     volume: 80,
@@ -31,7 +32,7 @@ const SettingsPage = () => {
           ...parsedSettings
         }));
         
-        // Apply dark mode if it was enabled
+        // Apply dark mode
         document.documentElement.classList.toggle('dark', parsedSettings.darkMode);
         
         // Set language
@@ -41,9 +42,14 @@ const SettingsPage = () => {
         if (parsedSettings.keepScreenOn) {
           applyScreenWakeLock();
         }
+      } else {
+        // If no saved settings, apply dark mode by default
+        document.documentElement.classList.add('dark');
       }
     } catch (error) {
       console.error("Error loading settings from localStorage:", error);
+      // If error, still apply dark mode by default
+      document.documentElement.classList.add('dark');
     }
   }, []);
 

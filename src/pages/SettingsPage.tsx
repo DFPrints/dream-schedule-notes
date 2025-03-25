@@ -19,6 +19,7 @@ const SettingsPage = () => {
     enableVibration: true,
     autoStartTimers: false,
     hideCompleted: false,
+    showAds: true, // Default to showing ads
   });
   
   // Load settings from localStorage on component mount
@@ -97,6 +98,17 @@ const SettingsPage = () => {
       if (newSettings.keepScreenOn) {
         applyScreenWakeLock();
       }
+    }
+    
+    // If ads setting was changed
+    if (newSettings.showAds !== undefined && 
+        newSettings.showAds !== settings.showAds) {
+      toast({
+        title: newSettings.showAds ? "Ads enabled" : "Ads disabled",
+        description: newSettings.showAds ? 
+          "Ads will be shown to support development" : 
+          "Ads have been turned off",
+      });
     }
   };
   

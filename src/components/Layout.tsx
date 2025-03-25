@@ -3,6 +3,8 @@ import { useLocation, Link } from 'react-router-dom';
 import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import AdMobBanner from './AdMobBanner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,9 +13,24 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [mounted, setMounted] = useState(false);
+  const [showAds, setShowAds] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setMounted(true);
+    
+    // Load ad setting from localStorage
+    try {
+      const savedSettings = localStorage.getItem('manifestAppSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        if (parsedSettings.showAds !== undefined) {
+          setShowAds(parsedSettings.showAds);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading ad settings:", error);
+    }
   }, []);
 
   const navItems = [
@@ -72,6 +89,9 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
       </nav>
+      
+      {/* AdMob Banner */}
+      {isMobile && <AdMobBanner show={showAds} />}
     </div>
   );
 };

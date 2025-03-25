@@ -19,6 +19,7 @@ const SettingsPage = () => {
     enableVibration: true,
     autoStartTimers: false,
     hideCompleted: false,
+    showAds: true, // Default to showing ads
   });
   
   // Load settings from localStorage on component mount

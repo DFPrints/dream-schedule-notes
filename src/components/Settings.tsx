@@ -20,7 +20,8 @@ import {
   Clock12,
   Vibrate,
   PlayCircle,
-  EyeOffIcon
+  EyeOffIcon,
+  DollarSignIcon
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -40,6 +41,7 @@ interface SettingsProps {
     enableVibration?: boolean;
     autoStartTimers?: boolean;
     hideCompleted?: boolean;
+    showAds?: boolean;
   };
   onUpdateSettings?: (settings: any) => void;
 }
@@ -60,6 +62,7 @@ const Settings = ({
     enableVibration: true,
     autoStartTimers: false,
     hideCompleted: false,
+    showAds: true,
   },
   onUpdateSettings
 }: SettingsProps) => {
@@ -331,6 +334,7 @@ const Settings = ({
       enableVibration: true,
       autoStartTimers: false,
       hideCompleted: false,
+      showAds: true,
     };
     
     setSettings(defaultSettings);
@@ -448,7 +452,6 @@ const Settings = ({
         </CardContent>
       </Card>
 
-      {/* Notifications settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
@@ -564,7 +567,6 @@ const Settings = ({
         </CardContent>
       </Card>
 
-      {/* Timer settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Timer Settings</CardTitle>
@@ -613,7 +615,6 @@ const Settings = ({
 
           <Separator className="my-4" />
           
-          {/* Sleep Hours section */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-full bg-primary/10">
@@ -652,7 +653,6 @@ const Settings = ({
         </CardContent>
       </Card>
 
-      {/* Device settings */}
       <Card className="neo-morphism border-0">
         <CardHeader>
           <CardTitle>Device Settings</CardTitle>
@@ -675,6 +675,26 @@ const Settings = ({
               checked={settings.keepScreenOn || false}
               onCheckedChange={(checked) => 
                 handleSettingChange('keepScreenOn', checked)
+              }
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-full bg-primary/10">
+                <DollarSignIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label>Show Advertisements</Label>
+                <p className="text-sm text-muted-foreground">
+                  Display advertisements to support the app
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.showAds ?? true}
+              onCheckedChange={(checked) => 
+                handleSettingChange('showAds', checked)
               }
             />
           </div>

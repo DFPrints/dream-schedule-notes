@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import AdBanner from './AdBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,9 +12,27 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [mounted, setMounted] = useState(false);
+  const [showAds, setShowAds] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Load ad preference from settings
+    const loadAdPreference = () => {
+      try {
+        const savedSettings = localStorage.getItem('manifestAppSettings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          if (parsedSettings.showAds !== undefined) {
+            setShowAds(parsedSettings.showAds);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading ad settings:", error);
+      }
+    };
+    
+    loadAdPreference();
   }, []);
 
   const navItems = [
@@ -35,6 +54,7 @@ const Layout = ({ children }: LayoutProps) => {
           {children}
         </div>
       </main>
+      {showAds && <AdBanner enabled={showAds} />}
       <nav className="fixed bottom-0 left-0 right-0 z-50">
         <div className="max-w-5xl mx-auto">
           <div className="glass-morphism rounded-t-2xl mx-4 mb-0">

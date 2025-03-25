@@ -14,7 +14,7 @@ const AdMobBanner = ({ show }: AdMobBannerProps) => {
       try {
         // Initialize AdMob
         await AdMob.initialize({
-          requestTrackingAuthorization: true,
+          // Remove the requestTrackingAuthorization property as it's not supported
           testingDevices: ['2077ef9a-815c-47df-987a-ba9a56bee178'],
           initializeForTesting: true,
         });

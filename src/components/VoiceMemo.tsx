@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -28,6 +27,8 @@ interface Recording {
 
 interface VoiceMemoProps {
   filterType?: 'all' | 'favorites' | 'archived';
+  customCategories?: string[];
+  onCreateCategory?: () => void;
 }
 
 const recordingCategories = [
@@ -40,7 +41,7 @@ const recordingCategories = [
   'Work'
 ];
 
-const VoiceMemo = ({ filterType = 'all' }: VoiceMemoProps) => {
+const VoiceMemo = ({ filterType = 'all', customCategories = [], onCreateCategory }: VoiceMemoProps) => {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -696,6 +697,17 @@ const VoiceMemo = ({ filterType = 'all' }: VoiceMemoProps) => {
                         {category}
                       </SelectItem>
                     ))}
+                    {customCategories.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="create_new" className="text-primary" onSelect={e => {
+                      e.preventDefault();
+                      onCreateCategory && onCreateCategory();
+                    }}>
+                      Create New
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -923,40 +935,4 @@ const VoiceMemo = ({ filterType = 'all' }: VoiceMemoProps) => {
                   <SelectContent>
                     {recordingCategories.map(category => (
                       <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex-1 ${selectedRecording.favorite ? 'bg-yellow-500/10' : ''}`}
-                  onClick={() => toggleFavorite(selectedRecording.id)}
-                >
-                  <BookmarkIcon className={`h-4 w-4 mr-1 ${selectedRecording.favorite ? 'text-yellow-500' : ''}`} />
-                  {selectedRecording.favorite ? 'Unfavorite' : 'Favorite'}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex-1 ${selectedRecording.archived ? 'bg-secondary' : ''}`}
-                  onClick={() => toggleArchive(selectedRecording.id)}
-                >
-                  <ArchiveIcon className="h-4 w-4 mr-1" />
-                  {selectedRecording.archived ? 'Unarchive' : 'Archive'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default VoiceMemo;
+                        {

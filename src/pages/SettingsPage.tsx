@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Settings from '@/components/Settings';
@@ -33,11 +32,7 @@ const SettingsPage = () => {
         }));
         
         // Apply dark mode if it was enabled
-        if (parsedSettings.darkMode) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+        document.documentElement.classList.toggle('dark', parsedSettings.darkMode);
         
         // Set language
         document.documentElement.lang = parsedSettings.language || 'en';

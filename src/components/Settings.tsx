@@ -46,7 +46,7 @@ interface SettingsProps {
 
 const Settings = ({ 
   settings: initialSettings = {
-    darkMode: false,
+    darkMode: true,
     notificationsEnabled: true,
     soundEnabled: true,
     volume: 80,
@@ -91,6 +91,16 @@ const Settings = ({
     setHasChanges(settingsChanged);
   }, [settings, sleepStart, sleepEnd, timerDuration, initialSettings]);
 
+  useEffect(() => {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    if (isDarkMode !== settings.darkMode) {
+      setSettings(prev => ({
+        ...prev,
+        darkMode: isDarkMode
+      }));
+    }
+  }, []);
+
   const handleTimerDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTimerDuration(parseInt(value) || 1);
@@ -119,7 +129,9 @@ const Settings = ({
     });
     
     if (key === 'darkMode') {
-      applyDarkMode(value);
+      if (onUpdateSettings) {
+        onUpdateSettings({ [key]: value });
+      }
     }
     
     if (key === 'soundEnabled' && value === true) {
@@ -131,7 +143,9 @@ const Settings = ({
     }
 
     if (key === 'language') {
-      applyLanguageChange(value);
+      if (onUpdateSettings) {
+        onUpdateSettings({ [key]: value });
+      }
     }
     
     if (key === 'enableVibration' && value === true) {

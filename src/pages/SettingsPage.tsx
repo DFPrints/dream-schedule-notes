@@ -6,7 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState({
-    darkMode: true, // Changed default to true
+    darkMode: true, // Default to dark mode
     notificationsEnabled: true,
     soundEnabled: true,
     volume: 80,
@@ -24,32 +24,45 @@ const SettingsPage = () => {
   // Load settings from localStorage on component mount
   useEffect(() => {
     try {
+      // Check theme directly from localStorage first
+      const currentTheme = localStorage.getItem('theme');
+      const isDarkMode = currentTheme === 'dark';
+      
+      // Load other settings
       const savedSettings = localStorage.getItem('manifestAppSettings');
       if (savedSettings) {
         const parsedSettings = JSON.parse(savedSettings);
+        
+        // Merge parsed settings with current state, prioritizing the theme setting
         setSettings(prevSettings => ({
           ...prevSettings,
-          ...parsedSettings
+          ...parsedSettings,
+          darkMode: isDarkMode // Ensure darkMode matches the current theme
         }));
         
-        // Apply dark mode
-        document.documentElement.classList.toggle('dark', parsedSettings.darkMode);
-        
-        // Set language
-        document.documentElement.lang = parsedSettings.language || 'en';
+        // Set language if available
+        if (parsedSettings.language) {
+          document.documentElement.lang = parsedSettings.language;
+        }
         
         // Apply screen wake lock if enabled
         if (parsedSettings.keepScreenOn) {
           applyScreenWakeLock();
         }
       } else {
-        // If no saved settings, apply dark mode by default
-        document.documentElement.classList.add('dark');
+        // If no saved settings, ensure darkMode in state matches actual theme
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          darkMode: isDarkMode
+        }));
       }
     } catch (error) {
       console.error("Error loading settings from localStorage:", error);
-      // If error, still apply dark mode by default
-      document.documentElement.classList.add('dark');
+      // On error, ensure dark mode is applied as default
+      if (!document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
     }
   }, []);
 
@@ -68,47 +81,62 @@ const SettingsPage = () => {
       return updatedSettings;
     });
     
-    // If dark mode was toggled, apply it
+    // If dark mode was toggled, apply it immediately and save to separate theme storage
     if (newSettings.darkMode !== undefined && newSettings.darkMode !== settings.darkMode) {
-      document.documentElement.classList.toggle('dark', newSettings.darkMode);
-      
-      toast({
-        title: newSettings.darkMode ? "Dark mode enabled" : "Light mode enabled",
-        description: "Theme preference has been updated.",
-      });
+      applyDarkMode(newSettings.darkMode);
     }
     
     // If language was changed
     if (newSettings.language !== undefined && newSettings.language !== settings.language) {
-      document.documentElement.lang = newSettings.language;
-      document.querySelector('html')?.setAttribute('lang', newSettings.language);
-      
-      const languages: Record<string, string> = {
-        en: "English",
-        es: "Spanish (Español)",
-        fr: "French (Français)",
-        de: "German (Deutsch)"
-      };
-      
-      toast({
-        title: "Language Changed",
-        description: `App language set to ${languages[newSettings.language] || newSettings.language}`,
-      });
-      
-      // Force re-render of components by triggering a small state update
-      setTimeout(() => {
-        const event = new Event('languagechange');
-        window.dispatchEvent(event);
-      }, 100);
+      applyLanguageChange(newSettings.language);
     }
     
-    // Apply screen wake lock if enabled
+    // If screen wake lock setting changed
     if (newSettings.keepScreenOn !== undefined && 
         newSettings.keepScreenOn !== settings.keepScreenOn) {
       if (newSettings.keepScreenOn) {
         applyScreenWakeLock();
       }
     }
+  };
+  
+  // Apply dark mode and store preference
+  const applyDarkMode = (isDark: boolean) => {
+    // Update class on html element
+    document.documentElement.classList.toggle('dark', isDark);
+    
+    // Store theme preference separately for initial load
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    
+    // Show toast notification
+    toast({
+      title: isDark ? "Dark mode enabled" : "Light mode enabled",
+      description: "Theme preference has been updated",
+    });
+  };
+  
+  // Apply language change
+  const applyLanguageChange = (language: string) => {
+    document.documentElement.lang = language;
+    document.querySelector('html')?.setAttribute('lang', language);
+    
+    const languages: Record<string, string> = {
+      en: "English",
+      es: "Spanish (Español)",
+      fr: "French (Français)",
+      de: "German (Deutsch)"
+    };
+    
+    toast({
+      title: "Language Changed",
+      description: `App language set to ${languages[language] || language}`,
+    });
+    
+    // Force re-render of components by triggering a small state update
+    setTimeout(() => {
+      const event = new Event('languagechange');
+      window.dispatchEvent(event);
+    }, 100);
   };
   
   // Apply screen wake lock to prevent device from sleeping

@@ -26,12 +26,18 @@ const Layout = ({ children }: LayoutProps) => {
         const parsedSettings = JSON.parse(savedSettings);
         if (parsedSettings.showAds !== undefined) {
           setShowAds(parsedSettings.showAds);
+          console.log('Ad settings loaded from localStorage:', parsedSettings.showAds);
         }
       }
     } catch (error) {
       console.error("Error loading ad settings:", error);
     }
   }, []);
+
+  // For debugging
+  useEffect(() => {
+    console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds);
+  }, [isMobile, showAds]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -91,7 +97,14 @@ const Layout = ({ children }: LayoutProps) => {
       </nav>
       
       {/* AdMob Banner */}
-      {isMobile && <AdMobBanner show={showAds} />}
+      {isMobile && showAds && (
+        <>
+          <div className="fixed bottom-16 left-0 w-full text-center text-xs bg-yellow-100 text-black py-1 z-40">
+            Ad Banner should appear below (debugging indicator)
+          </div>
+          <AdMobBanner show={showAds} />
+        </>
+      )}
     </div>
   );
 };

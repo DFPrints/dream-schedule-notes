@@ -66,6 +66,8 @@ const AdMobBanner = ({ show }: AdMobBannerProps) => {
       }
     };
 
+    console.log('AdMobBanner effect - show:', show, 'initialized:', initialized);
+    
     if (show) {
       showBanner();
     } else {

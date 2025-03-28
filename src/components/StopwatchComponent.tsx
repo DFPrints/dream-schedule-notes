@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useBackgroundTimer } from '@/hooks/use-background-timer';
 
 export const StopwatchComponent = () => {
-  // Use background timer instead of manual state
+  // Use background timer with initial time set to 0 and isCountdown set to false
   const {
     time: elapsedTime,
     isRunning,
@@ -169,6 +169,11 @@ export const StopwatchComponent = () => {
       checkAchievements();
     }
   }, [elapsedTime, laps.length, isRunning]);
+
+  // For debugging
+  useEffect(() => {
+    console.log('Stopwatch time:', elapsedTime, 'isRunning:', isRunning, 'isPaused:', isPaused);
+  }, [elapsedTime, isRunning, isPaused]);
 
   const timeValues = formatTime(elapsedTime);
   

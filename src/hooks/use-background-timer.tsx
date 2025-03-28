@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 /**
  * A hook that allows timers to continue running even when the app is in the background.
  * 
- * @param initialTime Initial time in seconds
+ * @param initialTime Initial time in milliseconds
  * @param autoStart Whether to start the timer automatically
  * @param isCountdown Whether this is a countdown timer (true) or a stopwatch (false)
  * @returns Timer control functions and state
@@ -66,7 +66,7 @@ export const useBackgroundTimer = (
           
           if (state.isRunning && !state.isPaused) {
             const now = Date.now();
-            const elapsed = Math.floor((now - state.lastTick) / 1000);
+            const elapsed = now - state.lastTick;
             
             if (isCountdown) {
               currentTime = Math.max(0, state.time - elapsed);
@@ -91,19 +91,22 @@ export const useBackgroundTimer = (
     }
   }, [isCountdown]);
   
-  // Set up the main timer tick interval
+  // Set up the main timer tick interval - using a more accurate approach with requestAnimationFrame
   useEffect(() => {
     if (isRunning && !isPaused) {
-      const tick = () => {
+      let animationFrameId: number;
+      
+      const updateTimer = () => {
         const now = Date.now();
-        const elapsed = Math.floor((now - lastTickRef.current) / 1000);
-        lastTickRef.current = now;
+        const elapsed = now - lastTickRef.current;
         
-        if (elapsed > 0) {
+        if (elapsed > 10) { // Update every 10ms for smoother display
+          lastTickRef.current = now;
+          
           setTime(prevTime => {
             if (isCountdown) {
               const newTime = Math.max(0, prevTime - elapsed);
-              if (newTime === 0) {
+              if (newTime === 0 && prevTime !== 0) {
                 setIsComplete(true);
                 setIsRunning(false);
               }
@@ -112,26 +115,26 @@ export const useBackgroundTimer = (
               return prevTime + elapsed;
             }
           });
+          
+          // Save state periodically (every ~1 second) to avoid excessive writes
+          if (Math.random() < 0.01) {
+            saveState();
+          }
+        }
+        
+        if (isRunning && !isPaused) {
+          animationFrameId = requestAnimationFrame(updateTimer);
         }
       };
       
-      intervalRef.current = window.setInterval(tick, 1000);
-      
-      // Also save the current state
-      saveState();
+      animationFrameId = requestAnimationFrame(updateTimer);
       
       return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
+        cancelAnimationFrame(animationFrameId);
+        saveState(); // Save state on cleanup
       };
     }
   }, [isRunning, isPaused, isCountdown]);
-  
-  // Save state when timer running state changes
-  useEffect(() => {
-    saveState();
-  }, [time, isRunning, isPaused]);
   
   // Add event listeners for page visibility changes
   useEffect(() => {
@@ -141,14 +144,14 @@ export const useBackgroundTimer = (
         if (isRunning && !isPaused) {
           // Update the time based on how long the app was in the background
           const now = Date.now();
-          const elapsed = Math.floor((now - lastTickRef.current) / 1000);
+          const elapsed = now - lastTickRef.current;
           lastTickRef.current = now;
           
           if (elapsed > 0) {
             setTime(prevTime => {
               if (isCountdown) {
                 const newTime = Math.max(0, prevTime - elapsed);
-                if (newTime === 0) {
+                if (newTime === 0 && prevTime !== 0) {
                   setIsComplete(true);
                   setIsRunning(false);
                 }
@@ -173,52 +176,6 @@ export const useBackgroundTimer = (
     };
   }, [isRunning, isPaused, isCountdown]);
   
-  // Add event listeners for app freeze/unfreeze (for mobile devices)
-  useEffect(() => {
-    const handleFreeze = () => {
-      // App is being frozen (backgrounded on mobile)
-      lastTickRef.current = Date.now();
-      saveState();
-    };
-    
-    const handleResume = () => {
-      // App is resuming from frozen state
-      if (isRunning && !isPaused) {
-        const now = Date.now();
-        const elapsed = Math.floor((now - lastTickRef.current) / 1000);
-        lastTickRef.current = now;
-        
-        if (elapsed > 0) {
-          setTime(prevTime => {
-            if (isCountdown) {
-              const newTime = Math.max(0, prevTime - elapsed);
-              if (newTime === 0) {
-                setIsComplete(true);
-                setIsRunning(false);
-              }
-              return newTime;
-            } else {
-              return prevTime + elapsed;
-            }
-          });
-        }
-      }
-    };
-    
-    // For mobile devices - use freeze/resume events
-    if (typeof document.addEventListener === 'function') {
-      document.addEventListener('freeze', handleFreeze);
-      document.addEventListener('resume', handleResume);
-    }
-    
-    return () => {
-      if (typeof document.removeEventListener === 'function') {
-        document.removeEventListener('freeze', handleFreeze);
-        document.removeEventListener('resume', handleResume);
-      }
-    };
-  }, [isRunning, isPaused, isCountdown]);
-  
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -236,7 +193,15 @@ export const useBackgroundTimer = (
   // Start the timer
   const start = () => {
     if (!isRunning) {
-      startTimeRef.current = Date.now() - (time * 1000);
+      if (isCountdown && time === 0) {
+        // Don't start a completed countdown timer
+        return;
+      }
+      
+      startTimeRef.current = isCountdown 
+        ? Date.now() + time 
+        : Date.now() - time;
+      
       lastTickRef.current = Date.now();
       setIsRunning(true);
       setIsPaused(false);
@@ -252,6 +217,7 @@ export const useBackgroundTimer = (
     if (isRunning && !isPaused) {
       pausedAtRef.current = time;
       setIsPaused(true);
+      saveState();
     }
   };
   

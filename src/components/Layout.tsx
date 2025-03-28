@@ -1,6 +1,6 @@
 
 import { useLocation, Link } from 'react-router-dom';
-import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon, StopwatchIcon } from 'lucide-react';
+import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import AdMobBanner from './AdMobBanner';
@@ -55,7 +55,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Timer', path: '/timer', icon: TimerIcon },
-    { name: 'Stopwatch', path: '/stopwatch', icon: StopwatchIcon },
+    { name: 'Stopwatch', path: '/stopwatch', icon: Clock },
     { name: 'Calendar', path: '/calendar', icon: CalendarIcon },
     { name: 'Notes', path: '/notes', icon: FileTextIcon },
     { name: 'Voice', path: '/voice-memo', icon: MicIcon },

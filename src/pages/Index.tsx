@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,9 +9,8 @@ import {
   FeatherIcon, 
   SparklesIcon, 
   MicIcon, 
-  StopwatchIcon, 
+  Clock, 
   SettingsIcon,
-  Clock 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -28,10 +26,8 @@ const Index = () => {
 
   useEffect(() => {
     setMounted(true);
-    // Here you would fetch actual data
   }, []);
 
-  // All available features
   const allFeatures = [
     { 
       id: 'timer', 
@@ -44,7 +40,7 @@ const Index = () => {
     { 
       id: 'stopwatch', 
       name: "Stopwatch", 
-      icon: StopwatchIcon, 
+      icon: Clock, 
       path: "/stopwatch", 
       color: "bg-blue-500/10 text-blue-500",
       description: "Track time with precision" 
@@ -83,7 +79,6 @@ const Index = () => {
     }
   ];
 
-  // Quick actions (subset of features)
   const quickActions = allFeatures.slice(0, 4);
 
   if (!mounted) return null;
@@ -91,7 +86,6 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-8 pb-20">
-        {/* Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-light tracking-tight">Manifest</h1>
           <p className="text-muted-foreground">
@@ -99,7 +93,6 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Tabs for different views */}
         <Tabs defaultValue="quick" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="quick">Quick Actions</TabsTrigger>
@@ -107,7 +100,6 @@ const Index = () => {
             <TabsTrigger value="recent">Recent</TabsTrigger>
           </TabsList>
           
-          {/* Quick Actions Tab Content */}
           <TabsContent value="quick" className="mt-0 animate-fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {quickActions.map((action) => (
@@ -126,7 +118,6 @@ const Index = () => {
               ))}
             </div>
             
-            {/* Start New Manifestation */}
             <Card className="glass-morphism overflow-hidden border-0 mt-6">
               <CardContent className="p-6">
                 <div className="flex justify-between items-center">
@@ -150,7 +141,6 @@ const Index = () => {
             </Card>
           </TabsContent>
           
-          {/* All Features Tab Content */}
           <TabsContent value="all" className="mt-0 animate-fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {allFeatures.map((feature) => (
@@ -171,12 +161,10 @@ const Index = () => {
             </div>
           </TabsContent>
           
-          {/* Recent Tab Content */}
           <TabsContent value="recent" className="mt-0 animate-fade-in">
             <div className="space-y-4">
               <h2 className="text-lg font-medium">Recent Activity</h2>
               <div className="grid gap-3">
-                {/* This could be populated with real user activity */}
                 <div className="flex items-center p-3 neo-morphism border-0 rounded-lg">
                   <div className="p-2 rounded-full bg-primary/10 text-primary">
                     <Clock className="h-4 w-4" />
@@ -191,7 +179,6 @@ const Index = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Features Overview - always shown */}
         <section className="pt-2">
           <h2 className="text-lg font-medium mb-4">Features</h2>
           <div className="grid gap-4">

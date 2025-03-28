@@ -23,6 +23,7 @@ export const useBackgroundTimer = (
   const startTimeRef = useRef<number | null>(null);
   const pausedAtRef = useRef<number>(0);
   const lastTickRef = useRef<number>(Date.now());
+  const timerIdRef = useRef<string>(`timer_${Math.random().toString(36).substring(2, 9)}`);
   
   // Save timer state to localStorage
   const saveState = () => {
@@ -36,13 +37,14 @@ export const useBackgroundTimer = (
         lastTick: lastTickRef.current,
         initialTime,
         isCountdown,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        timerId: timerIdRef.current
       };
       
       if (isRunning || isPaused) {
-        localStorage.setItem(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}`, JSON.stringify(state));
+        localStorage.setItem(`background_timer_${timerIdRef.current}`, JSON.stringify(state));
       } else {
-        localStorage.removeItem(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}`);
+        localStorage.removeItem(`background_timer_${timerIdRef.current}`);
       }
     } catch (error) {
       console.error('Error saving timer state:', error);
@@ -52,7 +54,7 @@ export const useBackgroundTimer = (
   // Load timer state from localStorage on initial mount
   useEffect(() => {
     try {
-      const savedState = localStorage.getItem(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}`);
+      const savedState = localStorage.getItem(`background_timer_${timerIdRef.current}`);
       
       if (savedState) {
         const state = JSON.parse(savedState);
@@ -171,6 +173,52 @@ export const useBackgroundTimer = (
     };
   }, [isRunning, isPaused, isCountdown]);
   
+  // Add event listeners for app freeze/unfreeze (for mobile devices)
+  useEffect(() => {
+    const handleFreeze = () => {
+      // App is being frozen (backgrounded on mobile)
+      lastTickRef.current = Date.now();
+      saveState();
+    };
+    
+    const handleResume = () => {
+      // App is resuming from frozen state
+      if (isRunning && !isPaused) {
+        const now = Date.now();
+        const elapsed = Math.floor((now - lastTickRef.current) / 1000);
+        lastTickRef.current = now;
+        
+        if (elapsed > 0) {
+          setTime(prevTime => {
+            if (isCountdown) {
+              const newTime = Math.max(0, prevTime - elapsed);
+              if (newTime === 0) {
+                setIsComplete(true);
+                setIsRunning(false);
+              }
+              return newTime;
+            } else {
+              return prevTime + elapsed;
+            }
+          });
+        }
+      }
+    };
+    
+    // For mobile devices - use freeze/resume events
+    if (typeof document.addEventListener === 'function') {
+      document.addEventListener('freeze', handleFreeze);
+      document.addEventListener('resume', handleResume);
+    }
+    
+    return () => {
+      if (typeof document.removeEventListener === 'function') {
+        document.removeEventListener('freeze', handleFreeze);
+        document.removeEventListener('resume', handleResume);
+      }
+    };
+  }, [isRunning, isPaused, isCountdown]);
+  
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -226,7 +274,7 @@ export const useBackgroundTimer = (
     lastTickRef.current = Date.now();
     
     // Clear saved state
-    localStorage.removeItem(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}`);
+    localStorage.removeItem(`background_timer_${timerIdRef.current}`);
   };
   
   return {

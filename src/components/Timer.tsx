@@ -32,6 +32,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import { useBackgroundTimer } from '@/hooks/use-background-timer';
 
 interface TimerProps {
   defaultMinutes?: number;
@@ -76,8 +77,18 @@ const Timer = ({
   is24Hour = true,
   onSavePreset
 }: TimerProps) => {
-  const [timeLeft, setTimeLeft] = useState(defaultMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
+  // Use background timer for time tracking
+  const {
+    time: timeLeft,
+    setTime: setTimeLeft,
+    isRunning,
+    isPaused,
+    start: startTimerBackground,
+    pause: pauseTimerBackground,
+    reset: resetTimerBackground,
+    isComplete
+  } = useBackgroundTimer(defaultMinutes * 60, false, true);
+
   const [isPauseDuringSleep, setIsPauseDuringSleep] = useState(pauseWhenSleeping);
   const [timeSetting, setTimeSetting] = useState(defaultMinutes);
   const [isEditing, setIsEditing] = useState(false);
@@ -98,7 +109,6 @@ const Timer = ({
   const [minutesInput, setMinutesInput] = useState(defaultMinutes.toString());
   const [secondsInput, setSecondsInput] = useState("0");
   
-  const intervalRef = useRef<number | null>(null);
   const repeatTimeoutRef = useRef<number | null>(null);
   const sleepCheckIntervalRef = useRef<number | null>(null);
 
@@ -149,64 +159,7 @@ const Timer = ({
   };
 
   useEffect(() => {
-    if (isPauseDuringSleep && isRunning) {
-      const isSleeping = checkIfSleepTime();
-      setIsSleepTime(isSleeping);
-      
-      if (isSleeping) {
-        pauseTimer();
-        toast({
-          title: "Timer Paused",
-          description: "Timer paused during sleep hours",
-        });
-      } else {
-        startTimerInterval();
-      }
-      
-      sleepCheckIntervalRef.current = window.setInterval(() => {
-        const nowSleeping = checkIfSleepTime();
-        setIsSleepTime(nowSleeping);
-        
-        if (nowSleeping && !isSleepTime && isRunning) {
-          pauseTimer();
-          toast({
-            title: "Timer Paused",
-            description: "Timer paused during sleep hours",
-          });
-        } else if (!nowSleeping && isSleepTime && !isRunning && intervalRef.current === null) {
-          setIsRunning(true);
-          startTimerInterval();
-          toast({
-            title: "Timer Resumed",
-            description: "Sleep hours ended, timer resumed",
-          });
-        }
-      }, 60000);
-      
-      return () => {
-        if (sleepCheckIntervalRef.current) {
-          clearInterval(sleepCheckIntervalRef.current);
-        }
-      };
-    }
-  }, [isPauseDuringSleep, isRunning, sleepHoursStart, sleepHoursEnd]);
-
-  useEffect(() => {
-    if (isPauseDuringSleep && isRunning) {
-      if (document.visibilityState === 'hidden') {
-        clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-      } else {
-        startTimerInterval();
-      }
-    }
-  }, [isPauseDuringSleep, isRunning]);
-
-  useEffect(() => {
-    if (timeLeft === 0 && isRunning) {
-      clearInterval(intervalRef.current!);
-      setIsRunning(false);
-      
+    if (isComplete) {
       setCompletionCount(prev => prev + 1);
       onComplete?.();
       
@@ -225,8 +178,7 @@ const Timer = ({
               });
             } else {
               setTimeLeft(timeSetting * 60);
-              setIsRunning(true);
-              startTimerInterval();
+              startTimerBackground();
             }
           } else {
             toast({
@@ -237,36 +189,54 @@ const Timer = ({
         }, repeatEvery * 60 * 1000);
       }
     }
-  }, [timeLeft, isRunning, onComplete, isRepeating, repeatEvery, timeSetting]);
+  }, [isComplete, onComplete, isRepeating, repeatEvery, timeSetting]);
+
+  useEffect(() => {
+    if (isPauseDuringSleep && isRunning) {
+      const isSleeping = checkIfSleepTime();
+      setIsSleepTime(isSleeping);
+      
+      if (isSleeping) {
+        pauseTimerBackground();
+        toast({
+          title: "Timer Paused",
+          description: "Timer paused during sleep hours",
+        });
+      }
+      
+      sleepCheckIntervalRef.current = window.setInterval(() => {
+        const nowSleeping = checkIfSleepTime();
+        setIsSleepTime(nowSleeping);
+        
+        if (nowSleeping && !isSleepTime && isRunning) {
+          pauseTimerBackground();
+          toast({
+            title: "Timer Paused",
+            description: "Timer paused during sleep hours",
+          });
+        } else if (!nowSleeping && isSleepTime && !isRunning) {
+          startTimerBackground();
+          toast({
+            title: "Timer Resumed",
+            description: "Sleep hours ended, timer resumed",
+          });
+        }
+      }, 60000);
+      
+      return () => {
+        if (sleepCheckIntervalRef.current) {
+          clearInterval(sleepCheckIntervalRef.current);
+        }
+      };
+    }
+  }, [isPauseDuringSleep, isRunning, sleepHoursStart, sleepHoursEnd]);
 
   useEffect(() => {
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
       if (repeatTimeoutRef.current) clearTimeout(repeatTimeoutRef.current);
       if (sleepCheckIntervalRef.current) clearInterval(sleepCheckIntervalRef.current);
     };
   }, []);
-
-  const pauseTimer = () => {
-    clearInterval(intervalRef.current!);
-    intervalRef.current = null;
-    setIsRunning(false);
-  };
-
-  const startTimerInterval = () => {
-    if (intervalRef.current !== null) return;
-    
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          intervalRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
 
   const toggleTimer = () => {
     if (!isRunning && !isActiveToday()) {
@@ -289,25 +259,21 @@ const Timer = ({
     }
     
     if (isRunning) {
-      pauseTimer();
+      pauseTimerBackground();
     } else {
       if (timeLeft === 0) {
         setTimeLeft(timeSetting * 60);
       }
-      startTimerInterval();
-      setIsRunning(true);
+      startTimerBackground();
     }
   };
 
   const resetTimer = () => {
-    clearInterval(intervalRef.current!);
-    intervalRef.current = null;
+    resetTimerBackground();
     if (repeatTimeoutRef.current) {
       clearTimeout(repeatTimeoutRef.current);
       repeatTimeoutRef.current = null;
     }
-    setIsRunning(false);
-    setTimeLeft(timeSetting * 60);
     setCompletionCount(0);
   };
 
@@ -561,23 +527,23 @@ const Timer = ({
               </div>
             ) : (
               <div 
-                className="relative w-48 h-48 mx-auto rounded-full mb-4 cursor-pointer neo-morphism flex items-center justify-center"
+                className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto rounded-full mb-4 cursor-pointer neo-morphism flex items-center justify-center"
                 onClick={() => setShowCustomTimer(true)}
               >
                 <svg className="absolute inset-0 w-full h-full -rotate-90">
                   <circle
-                    cx="96"
-                    cy="96"
-                    r="90"
+                    cx="50%"
+                    cy="50%"
+                    r="45%"
                     stroke="currentColor"
                     strokeWidth="4"
                     fill="none"
                     className="text-muted opacity-20"
                   />
                   <circle
-                    cx="96"
-                    cy="96"
-                    r="90"
+                    cx="50%"
+                    cy="50%"
+                    r="45%"
                     stroke="currentColor"
                     strokeWidth="8"
                     fill="none"
@@ -587,15 +553,15 @@ const Timer = ({
                       isSleepTime && isPauseDuringSleep && "text-muted"
                     )}
                     style={{
-                      strokeDasharray: 2 * Math.PI * 90,
-                      strokeDashoffset: 2 * Math.PI * 90 * (1 - progressPercent / 100),
+                      strokeDasharray: 2 * Math.PI * (window.innerWidth < 640 ? 40 : 48) * 0.45,
+                      strokeDashoffset: 2 * Math.PI * (window.innerWidth < 640 ? 40 : 48) * 0.45 * (1 - progressPercent / 100),
                     }}
                   />
                 </svg>
 
                 <div className="z-10 text-center">
-                  <span className="text-3xl font-light tracking-tighter">{formatTime(timeLeft)}</span>
-                  <span className="text-sm text-muted-foreground mt-2 block">
+                  <span className="text-2xl sm:text-3xl font-light tracking-tighter">{formatTime(timeLeft)}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground mt-2 block">
                     {isSleepTime && isPauseDuringSleep ? (
                       <span className="flex items-center justify-center">
                         <MoonIcon className="h-3 w-3 mr-1" />
@@ -670,22 +636,22 @@ const Timer = ({
         </ToggleGroup>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         <Button
           size="lg"
           variant="outline"
-          className="w-12 h-12 rounded-full"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full"
           onClick={resetTimer}
           disabled={isRunning && timeLeft > 0}
         >
-          <StopIcon className="h-5 w-5" />
+          <StopIcon className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
         
         <Button
           size="lg"
           variant={isRunning ? "secondary" : "default"}
           className={cn(
-            "w-16 h-16 rounded-full shadow-md transition-transform duration-300",
+            "w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-md transition-transform duration-300",
             isRunning ? "bg-accent" : "bg-primary", 
             (isPauseDuringSleep && isSleepTime) && "opacity-50 cursor-not-allowed"
           )}
@@ -693,16 +659,16 @@ const Timer = ({
           disabled={isPauseDuringSleep && isSleepTime}
         >
           {isRunning ? (
-            <PauseIcon className="h-6 w-6" />
+            <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" />
           ) : (
-            <PlayIcon className="h-6 w-6" />
+            <PlayIcon className="h-5 w-5 sm:h-6 sm:w-6" />
           )}
         </Button>
         
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="w-12 h-12 flex items-center justify-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="sleep-mode"
@@ -714,7 +680,7 @@ const Timer = ({
                   </Label>
                   <MoonIcon 
                     className={cn(
-                      "h-5 w-5 transition-colors", 
+                      "h-4 w-4 sm:h-5 sm:w-5 transition-colors", 
                       isPauseDuringSleep ? "text-primary" : "text-muted-foreground"
                     )} 
                   />
@@ -722,7 +688,7 @@ const Timer = ({
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Pause during sleep hours ({formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)})</p>
+              <p className="text-xs sm:text-sm">Pause during sleep hours ({formatTimeString(sleepHoursStart)}-{formatTimeString(sleepHoursEnd)})</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -757,7 +723,7 @@ const Timer = ({
       </div>
       
       {isPauseDuringSleep && (
-        <div className="flex items-start mt-4 max-w-xs text-center">
+        <div className="flex items-start mt-4 max-w-xs text-center px-4">
           <AlertCircleIcon className="h-4 w-4 text-muted-foreground mr-2 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
             Timer will automatically pause during sleep hours ({formatTimeString(sleepHoursStart)} - {formatTimeString(sleepHoursEnd)}) and when the app is in the background

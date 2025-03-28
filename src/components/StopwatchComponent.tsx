@@ -4,18 +4,25 @@ import { Button } from '@/components/ui/button';
 import { PlayIcon, PauseIcon, SquareIcon, TimerResetIcon, FlagIcon, Trophy, Share2Icon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useBackgroundTimer } from '@/hooks/use-background-timer';
 
 export const StopwatchComponent = () => {
-  const [isRunning, setIsRunning] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  // Use background timer instead of manual state
+  const {
+    time: elapsedTime,
+    isRunning,
+    isPaused,
+    start: startTimer,
+    pause: pauseTimer,
+    reset: resetTimer
+  } = useBackgroundTimer(0, false, false);
+  
   const [laps, setLaps] = useState<number[]>([]);
   const [bestLap, setBestLap] = useState<number | null>(null);
   const [worstLap, setWorstLap] = useState<number | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [achievementUnlocked, setAchievementUnlocked] = useState<string | null>(null);
   
-  const startTimeRef = useRef<number | null>(null);
-  const intervalRef = useRef<number | null>(null);
   const achievementsRef = useRef<Set<string>>(new Set());
   
   // Format time as HH:MM:SS.MS
@@ -33,47 +40,21 @@ export const StopwatchComponent = () => {
     };
   };
   
-  // Start/Stop the stopwatch
+  // Toggle the stopwatch
   const toggleStopwatch = () => {
     if (!isRunning) {
-      // Start the stopwatch
-      if (startTimeRef.current === null) {
-        startTimeRef.current = Date.now() - elapsedTime;
-      } else {
-        startTimeRef.current = Date.now() - elapsedTime;
-      }
-      
-      intervalRef.current = window.setInterval(() => {
-        setElapsedTime(Date.now() - startTimeRef.current!);
-      }, 10);
-      
-      setIsRunning(true);
+      startTimer();
     } else {
-      // Stop the stopwatch
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setIsRunning(false);
-      
-      // Check if we should show achievements
-      checkAchievements();
+      pauseTimer();
     }
   };
   
   // Reset the stopwatch
-  const resetStopwatch = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    
-    setIsRunning(false);
-    setElapsedTime(0);
+  const handleReset = () => {
+    resetTimer();
     setLaps([]);
     setBestLap(null);
     setWorstLap(null);
-    startTimeRef.current = null;
     setShowShare(false);
   };
   
@@ -148,7 +129,8 @@ export const StopwatchComponent = () => {
   // Handle share functionality
   const handleShare = async () => {
     try {
-      const shareText = `I tracked ${formatTime(elapsedTime).hours}:${formatTime(elapsedTime).minutes}:${formatTime(elapsedTime).seconds} with ${laps.length} laps using the Manifest App Stopwatch!`;
+      const timeValues = formatTime(elapsedTime);
+      const shareText = `I tracked ${timeValues.hours}:${timeValues.minutes}:${timeValues.seconds} with ${laps.length} laps using the Manifest App Stopwatch!`;
       
       if (navigator.share) {
         await navigator.share({
@@ -174,15 +156,6 @@ export const StopwatchComponent = () => {
     }
   };
   
-  // Clean up interval on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-  
   // Show share option when stopwatch is stopped with time > 0
   useEffect(() => {
     if (!isRunning && elapsedTime > 0) {
@@ -195,7 +168,7 @@ export const StopwatchComponent = () => {
     if (isRunning && elapsedTime > 0) {
       checkAchievements();
     }
-  }, [elapsedTime, laps.length]);
+  }, [elapsedTime, laps.length, isRunning]);
 
   const timeValues = formatTime(elapsedTime);
   
@@ -212,28 +185,28 @@ export const StopwatchComponent = () => {
         <div className="flex justify-center items-end space-x-1 mb-2">
           <div className="flex flex-col items-center">
             <span className="text-xs text-muted-foreground mb-1">H</span>
-            <div className="text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-3 py-2 rounded-md">
+            <div className="text-2xl md:text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-2 md:px-3 py-2 rounded-md">
               {timeValues.hours}
             </div>
           </div>
           <span className="text-xl font-mono mb-2">:</span>
           <div className="flex flex-col items-center">
             <span className="text-xs text-muted-foreground mb-1">M</span>
-            <div className="text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-3 py-2 rounded-md">
+            <div className="text-2xl md:text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-2 md:px-3 py-2 rounded-md">
               {timeValues.minutes}
             </div>
           </div>
           <span className="text-xl font-mono mb-2">:</span>
           <div className="flex flex-col items-center">
             <span className="text-xs text-muted-foreground mb-1">S</span>
-            <div className="text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-3 py-2 rounded-md">
+            <div className="text-2xl md:text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-2 md:px-3 py-2 rounded-md">
               {timeValues.seconds}
             </div>
           </div>
           <span className="text-xl font-mono mb-2">.</span>
           <div className="flex flex-col items-center">
             <span className="text-xs text-muted-foreground mb-1">MS</span>
-            <div className="text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-3 py-2 rounded-md">
+            <div className="text-2xl md:text-3xl font-mono font-semibold tracking-tight bg-secondary/30 px-2 md:px-3 py-2 rounded-md">
               {timeValues.milliseconds}
             </div>
           </div>
@@ -252,7 +225,7 @@ export const StopwatchComponent = () => {
         </Button>
         
         <Button 
-          onClick={resetStopwatch}
+          onClick={handleReset}
           className="rounded-full" 
           size="sm"
           variant="outline"
@@ -295,7 +268,7 @@ export const StopwatchComponent = () => {
             </Badge>
           </div>
           
-          <div className="max-h-48 overflow-y-auto space-y-1">
+          <div className="max-h-48 overflow-y-auto space-y-1 pb-2">
             {laps.length > 1 && (
               <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                 <div className="text-center">
@@ -324,33 +297,35 @@ export const StopwatchComponent = () => {
                 </div>
               </div>
             )}
-            {laps.map((lap, index, arr) => {
-              const lapTime = index === arr.length - 1 ? lap : lap - arr[index + 1];
-              const isLapBest = bestLap === lapTime;
-              const isLapWorst = worstLap === lapTime;
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`flex justify-between text-sm py-1 px-2 rounded-md ${
-                    isLapBest ? "bg-green-500/10 border-l-2 border-green-500" : 
-                    isLapWorst ? "bg-red-500/10 border-l-2 border-red-500" : 
-                    "bg-secondary/50"
-                  }`}
-                >
-                  <span className="font-medium">Lap {arr.length - index}</span>
-                  <span className="font-mono">{formatTime(lap).minutes}:{formatTime(lap).seconds}.{formatTime(lap).milliseconds}</span>
-                  {index < arr.length - 1 && (
-                    <span className={`font-mono ${
-                      isLapBest ? "text-green-500" : 
-                      isLapWorst ? "text-red-500" : ""
-                    }`}>
-                      +{formatTime(lapTime).minutes}:{formatTime(lapTime).seconds}.{formatTime(lapTime).milliseconds}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+            <div className="space-y-1">
+              {laps.map((lap, index, arr) => {
+                const lapTime = index === arr.length - 1 ? lap : lap - arr[index + 1];
+                const isLapBest = bestLap === lapTime;
+                const isLapWorst = worstLap === lapTime;
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex justify-between text-sm py-1 px-2 rounded-md ${
+                      isLapBest ? "bg-green-500/10 border-l-2 border-green-500" : 
+                      isLapWorst ? "bg-red-500/10 border-l-2 border-red-500" : 
+                      "bg-secondary/50"
+                    }`}
+                  >
+                    <span className="font-medium">Lap {arr.length - index}</span>
+                    <span className="font-mono">{formatTime(lap).minutes}:{formatTime(lap).seconds}.{formatTime(lap).milliseconds}</span>
+                    {index < arr.length - 1 && (
+                      <span className={`font-mono ${
+                        isLapBest ? "text-green-500" : 
+                        isLapWorst ? "text-red-500" : ""
+                      }`}>
+                        +{formatTime(lapTime).minutes}:{formatTime(lapTime).seconds}.{formatTime(lapTime).milliseconds}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

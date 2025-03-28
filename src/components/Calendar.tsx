@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface Event {
   id: string;

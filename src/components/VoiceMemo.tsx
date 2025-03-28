@@ -29,6 +29,7 @@ interface Recording {
 interface VoiceMemoProps {
   filterType?: 'all' | 'favorites' | 'archived';
   customCategories?: string[];
+  categoryColors?: Record<string, string>;
   onCreateCategory?: () => void;
 }
 

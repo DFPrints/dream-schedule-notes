@@ -1,6 +1,6 @@
 
 import { useLocation, Link } from 'react-router-dom';
-import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon } from 'lucide-react';
+import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon, StopwatchIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import AdMobBanner from './AdMobBanner';
@@ -15,9 +15,18 @@ const Layout = ({ children }: LayoutProps) => {
   const [mounted, setMounted] = useState(false);
   const [showAds, setShowAds] = useState(true);
   const isMobile = useIsMobile();
+  const [isSmallerScreen, setIsSmallerScreen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Check for smaller screens (iPhone SE, small Android phones)
+    const checkScreenSize = () => {
+      setIsSmallerScreen(window.innerWidth < 360 || window.innerHeight < 640);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
     
     // Load ad setting from localStorage
     try {
@@ -32,17 +41,21 @@ const Layout = ({ children }: LayoutProps) => {
     } catch (error) {
       console.error("Error loading ad settings:", error);
     }
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
   }, []);
 
   // For debugging
   useEffect(() => {
-    console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds);
-  }, [isMobile, showAds]);
+    console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds, 'isSmallerScreen:', isSmallerScreen);
+  }, [isMobile, showAds, isSmallerScreen]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Timer', path: '/timer', icon: TimerIcon },
-    { name: 'Stopwatch', path: '/stopwatch', icon: TimerIcon },
+    { name: 'Stopwatch', path: '/stopwatch', icon: StopwatchIcon },
     { name: 'Calendar', path: '/calendar', icon: CalendarIcon },
     { name: 'Notes', path: '/notes', icon: FileTextIcon },
     { name: 'Voice', path: '/voice-memo', icon: MicIcon },
@@ -69,22 +82,26 @@ const Layout = ({ children }: LayoutProps) => {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center w-16 py-2 rounded-full transition-all duration-300',
+                      'flex flex-col items-center justify-center py-2 rounded-full transition-all duration-300',
+                      isSmallerScreen ? 'w-12' : 'w-16',
                       isActive 
                         ? 'text-primary scale-110' 
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
                     <item.icon className={cn(
-                      'w-5 h-5 mb-1 transition-transform',
+                      'mb-1 transition-transform',
+                      isSmallerScreen ? 'w-4 h-4' : 'w-5 h-5',
                       isActive && 'animate-scale-in'
                     )} />
-                    <span className={cn(
-                      'text-xs font-medium transition-opacity',
-                      isActive ? 'opacity-100' : 'opacity-80'
-                    )}>
-                      {item.name}
-                    </span>
+                    {!isSmallerScreen && (
+                      <span className={cn(
+                        'text-xs font-medium transition-opacity',
+                        isActive ? 'opacity-100' : 'opacity-80'
+                      )}>
+                        {item.name}
+                      </span>
+                    )}
                     {isActive && (
                       <div className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary animate-scale-in" />
                     )}

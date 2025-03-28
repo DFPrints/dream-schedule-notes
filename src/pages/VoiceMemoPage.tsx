@@ -8,7 +8,8 @@ import {
   MicIcon, 
   ArchiveIcon, 
   BookmarkIcon, 
-  PlusIcon 
+  PlusIcon,
+  PaletteIcon
 } from 'lucide-react';
 import { 
   Select, 
@@ -29,12 +30,27 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+// Category color options
+const categoryColors = [
+  { name: "Default", value: "default" },
+  { name: "Purple", value: "purple" },
+  { name: "Blue", value: "blue" },
+  { name: "Green", value: "green" },
+  { name: "Yellow", value: "yellow" },
+  { name: "Orange", value: "orange" },
+  { name: "Red", value: "red" },
+  { name: "Pink", value: "pink" }
+];
 
 const VoiceMemoPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('default');
   
   // Load custom categories from localStorage on component mount
   useEffect(() => {
@@ -43,15 +59,21 @@ const VoiceMemoPage = () => {
       if (savedCategories) {
         setCustomCategories(JSON.parse(savedCategories));
       }
+      
+      const savedColors = localStorage.getItem('voiceMemoCustomCategoryColors');
+      if (savedColors) {
+        setCategoryColors(JSON.parse(savedColors));
+      }
     } catch (error) {
       console.error("Error loading custom categories:", error);
     }
   }, []);
   
   // Save custom categories to localStorage
-  const saveCustomCategories = (categories: string[]) => {
+  const saveCustomCategories = (categories: string[], colors: Record<string, string>) => {
     try {
       localStorage.setItem('voiceMemoCustomCategories', JSON.stringify(categories));
+      localStorage.setItem('voiceMemoCustomCategoryColors', JSON.stringify(colors));
     } catch (error) {
       console.error("Error saving custom categories:", error);
     }
@@ -80,9 +102,13 @@ const VoiceMemoPage = () => {
     }
     
     const updatedCategories = [...customCategories, formattedName];
+    const updatedColors = {...categoryColors, [formattedName]: newCategoryColor};
+    
     setCustomCategories(updatedCategories);
-    saveCustomCategories(updatedCategories);
+    setCategoryColors(updatedColors);
+    saveCustomCategories(updatedCategories, updatedColors);
     setNewCategoryName('');
+    setNewCategoryColor('default');
     setIsAddCategoryOpen(false);
     
     toast({
@@ -121,6 +147,7 @@ const VoiceMemoPage = () => {
                 <VoiceMemo 
                   filterType="all" 
                   customCategories={customCategories}
+                  categoryColors={categoryColors}
                   onCreateCategory={() => setIsAddCategoryOpen(true)}
                 />
               </TabsContent>
@@ -128,6 +155,7 @@ const VoiceMemoPage = () => {
                 <VoiceMemo 
                   filterType="favorites" 
                   customCategories={customCategories}
+                  categoryColors={categoryColors}
                   onCreateCategory={() => setIsAddCategoryOpen(true)}
                 />
               </TabsContent>
@@ -135,6 +163,7 @@ const VoiceMemoPage = () => {
                 <VoiceMemo 
                   filterType="archived" 
                   customCategories={customCategories}
+                  categoryColors={categoryColors}
                   onCreateCategory={() => setIsAddCategoryOpen(true)}
                 />
               </TabsContent>
@@ -164,6 +193,43 @@ const VoiceMemoPage = () => {
                     }
                   }}
                 />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="categoryColor">Category Color</Label>
+                <RadioGroup
+                  value={newCategoryColor}
+                  onValueChange={setNewCategoryColor}
+                  className="flex flex-wrap gap-2"
+                >
+                  {categoryColors.map((color) => (
+                    <div key={color.value} className="flex items-center space-x-2">
+                      <RadioGroupItem 
+                        value={color.value} 
+                        id={`color-${color.value}`}
+                        className="peer sr-only" 
+                      />
+                      <Label
+                        htmlFor={`color-${color.value}`}
+                        className="flex items-center justify-center rounded-full p-1 w-8 h-8 peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary cursor-pointer"
+                        style={{
+                          backgroundColor: 
+                            color.value === 'default' ? 'var(--primary)' :
+                            color.value === 'purple' ? '#9b87f5' :
+                            color.value === 'blue' ? '#0EA5E9' :
+                            color.value === 'green' ? '#10B981' :
+                            color.value === 'yellow' ? '#F59E0B' :
+                            color.value === 'orange' ? '#F97316' :
+                            color.value === 'red' ? '#EF4444' :
+                            color.value === 'pink' ? '#EC4899' : 'var(--primary)',
+                          opacity: 0.8
+                        }}
+                      >
+                        <span className="sr-only">{color.name}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
             </div>
             <DialogFooter>

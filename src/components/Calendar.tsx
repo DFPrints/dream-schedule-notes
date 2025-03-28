@@ -7,17 +7,23 @@ import {
   PlusIcon, 
   CalendarIcon,
   CalendarDaysIcon,
-  CalendarCheckIcon 
+  CalendarCheckIcon,
+  ClockIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 
 interface Event {
   id: string;
   title: string;
   content?: string;
   date: Date;
+  startTime?: string;
+  endTime?: string;
+  category?: string;
+  categoryColor?: string;
   completed: boolean;
 }
 
@@ -41,7 +47,17 @@ const Calendar = ({
   const eventsForSelectedDate = selectedDate 
     ? events.filter(event => 
         event.date.toDateString() === selectedDate.toDateString()
-      )
+      ).sort((a, b) => {
+        // Sort by start time if available
+        if (a.startTime && b.startTime) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        // Put events with start times first
+        if (a.startTime && !b.startTime) return -1;
+        if (!a.startTime && b.startTime) return 1;
+        // Sort by title for events without start times
+        return a.title.localeCompare(b.title);
+      })
     : [];
 
   // Get number of events per day for the current month
@@ -70,6 +86,20 @@ const Calendar = ({
     }
   };
 
+  // Format time for display
+  const formatTime = (time?: string) => {
+    if (!time) return '';
+    try {
+      const [hours, minutes] = time.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    } catch (e) {
+      return time;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-md overflow-hidden rounded-xl">
@@ -92,14 +122,26 @@ const Calendar = ({
               hasEvent: (date) => events.some(event => 
                 event.date.toDateString() === date.toDateString()
               ),
-              isCompleted: (date) => events.some(event => 
-                event.date.toDateString() === date.toDateString() && event.completed
-              ),
+              isCompleted: (date) => {
+                const dayEvents = events.filter(event => 
+                  event.date.toDateString() === date.toDateString()
+                );
+                return dayEvents.length > 0 && dayEvents.every(event => event.completed);
+              },
+              hasPartialComplete: (date) => {
+                const dayEvents = events.filter(event => 
+                  event.date.toDateString() === date.toDateString()
+                );
+                return dayEvents.length > 0 && 
+                       dayEvents.some(event => event.completed) &&
+                       !dayEvents.every(event => event.completed);
+              },
               isToday: (date) => date.toDateString() === new Date().toDateString(),
             }}
             modifiersClassNames={{
               hasEvent: "bg-primary/10 font-medium",
               isCompleted: "bg-manifest-gold/20 text-manifest-gold",
+              hasPartialComplete: "bg-primary/20",
               isToday: "border-2 border-primary ring-2 ring-primary/20",
             }}
             components={{
@@ -110,6 +152,11 @@ const Calendar = ({
                 const hasEvents = eventsForThisDay.length > 0;
                 const hasCompletedEvents = eventsForThisDay.some(event => event.completed);
                 const allComplete = hasEvents && eventsForThisDay.every(event => event.completed);
+                
+                // Group events by category color
+                const categoryColors = hasEvents 
+                  ? [...new Set(eventsForThisDay.map(e => e.categoryColor || '#4ade80'))]
+                  : [];
                 
                 return (
                   <div className="relative w-full h-full flex items-center justify-center">
@@ -122,14 +169,11 @@ const Calendar = ({
                       {hasEvents && (
                         <div className="absolute -bottom-1 flex space-x-0.5 justify-center">
                           {eventsForThisDay.length > 0 && eventsForThisDay.length <= 3 ? (
-                            eventsForThisDay.map((_, idx) => (
+                            categoryColors.map((color, idx) => (
                               <div 
                                 key={idx} 
-                                className={cn(
-                                  "w-1 h-1 rounded-full",
-                                  allComplete ? "bg-manifest-gold" :
-                                  hasCompletedEvents ? "bg-primary" : "bg-primary"
-                                )} 
+                                className="w-1 h-1 rounded-full" 
+                                style={{ backgroundColor: color }}
                               />
                             ))
                           ) : (
@@ -138,6 +182,7 @@ const Calendar = ({
                               className={cn(
                                 "absolute -bottom-0 h-3 min-w-3 px-1 text-[0.6rem] flex items-center justify-center",
                                 allComplete ? "bg-manifest-gold/20 text-manifest-gold border-manifest-gold" :
+                                hasCompletedEvents ? "bg-primary/20 text-primary border-primary" :
                                 "bg-primary/20 text-primary border-primary"
                               )}
                             >
@@ -177,22 +222,24 @@ const Calendar = ({
             )}
           </div>
           <Button
-            size="sm"
             onClick={handleAddEvent}
-            className="rounded-full h-8 w-8 p-0 bg-primary hover:bg-primary/90"
+            className="rounded-md h-9 bg-primary hover:bg-primary/90 flex items-center gap-1"
           >
             <PlusIcon className="h-4 w-4" />
-            <span className="sr-only">Add event</span>
+            <span>Add Event</span>
           </Button>
         </div>
 
         {eventsForSelectedDate.length > 0 ? (
           <div className="space-y-2">
             {eventsForSelectedDate.map((event) => (
-              <div 
+              <motion.div 
                 key={event.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
                 className={cn(
-                  "flex items-center p-3 rounded-lg transition-all hover:shadow-md cursor-pointer",
+                  "flex items-start p-4 rounded-lg transition-all hover:shadow-md cursor-pointer",
                   event.completed 
                     ? "glass-card bg-manifest-gold/5 border border-manifest-gold/20" 
                     : "glass-card hover:bg-primary/5"
@@ -203,7 +250,7 @@ const Calendar = ({
                   size="sm"
                   variant="ghost"
                   className={cn(
-                    "h-6 w-6 rounded-full p-0 mr-3",
+                    "h-6 w-6 rounded-full p-0 mr-3 mt-0.5",
                     event.completed 
                       ? "bg-manifest-gold/20 text-manifest-gold" 
                       : "bg-primary/10 text-primary/40"
@@ -219,12 +266,50 @@ const Calendar = ({
                   </span>
                 </Button>
                 <div className="flex-1">
-                  <span className={cn(
-                    "font-medium",
-                    event.completed && "line-through text-muted-foreground"
-                  )}>
-                    {event.title}
-                  </span>
+                  <div className="flex justify-between">
+                    <span className={cn(
+                      "font-medium",
+                      event.completed && "line-through text-muted-foreground"
+                    )}>
+                      {event.title}
+                    </span>
+                    
+                    {event.categoryColor && (
+                      <div 
+                        className="w-3 h-3 rounded-full ml-2" 
+                        style={{ backgroundColor: event.categoryColor }}
+                      />
+                    )}
+                  </div>
+                  
+                  {(event.startTime || event.category) && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {event.startTime && (
+                        <div className="flex items-center text-xs text-muted-foreground gap-1">
+                          <ClockIcon className="h-3 w-3" />
+                          <span>
+                            {formatTime(event.startTime)}
+                            {event.endTime && ` - ${formatTime(event.endTime)}`}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {event.category && (
+                        <Badge 
+                          variant="outline" 
+                          className="px-2 py-0 h-5 text-xs"
+                          style={{ 
+                            backgroundColor: `${event.categoryColor}20`,
+                            color: event.categoryColor,
+                            borderColor: `${event.categoryColor}40`
+                          }}
+                        >
+                          {event.category}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
                   {event.content && (
                     <p className={cn(
                       "text-xs mt-1",
@@ -239,7 +324,7 @@ const Calendar = ({
                 {event.completed && (
                   <CalendarCheckIcon className="h-4 w-4 text-manifest-gold ml-2" />
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : (

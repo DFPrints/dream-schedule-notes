@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Event {
   id: string;
@@ -43,50 +43,41 @@ const Calendar = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [month, setMonth] = useState<Date>(new Date());
   
-  // Get events for selected date
   const eventsForSelectedDate = selectedDate 
     ? events.filter(event => 
         event.date.toDateString() === selectedDate.toDateString()
       ).sort((a, b) => {
-        // Sort by start time if available
         if (a.startTime && b.startTime) {
           return a.startTime.localeCompare(b.startTime);
         }
-        // Put events with start times first
         if (a.startTime && !b.startTime) return -1;
         if (!a.startTime && b.startTime) return 1;
-        // Sort by title for events without start times
         return a.title.localeCompare(b.title);
       })
     : [];
 
-  // Get number of events per day for the current month
   const getEventsForDay = (date: Date) => {
     return events.filter(event => 
       event.date.toDateString() === date.toDateString()
     );
   };
 
-  // Handle date selection
   const handleSelect = (date: Date | undefined) => {
     setSelectedDate(date);
   };
 
-  // Handle add event
   const handleAddEvent = () => {
     if (selectedDate && onAddEvent) {
       onAddEvent(selectedDate);
     }
   };
 
-  // Handle toggle event completion
   const handleToggleComplete = (event: Event) => {
     if (onToggleEventComplete) {
       onToggleEventComplete(event.id, !event.completed);
     }
   };
 
-  // Format time for display
   const formatTime = (time?: string) => {
     if (!time) return '';
     try {
@@ -153,7 +144,6 @@ const Calendar = ({
                 const hasCompletedEvents = eventsForThisDay.some(event => event.completed);
                 const allComplete = hasEvents && eventsForThisDay.every(event => event.completed);
                 
-                // Group events by category color
                 const categoryColors = hasEvents 
                   ? [...new Set(eventsForThisDay.map(e => e.categoryColor || '#4ade80'))]
                   : [];
@@ -342,6 +332,83 @@ const Calendar = ({
         )}
       </div>
     </div>
+  );
+};
+
+const CategoryForm = ({ onClose, onSave }) => {
+  const [name, setName] = useState("");
+  const [color, setColor] = useState("#9b87f5");
+
+  const colors = [
+    { name: "Purple", value: "#9b87f5" },
+    { name: "Blue", value: "#0EA5E9" },
+    { name: "Green", value: "#10B981" },
+    { name: "Yellow", value: "#F59E0B" },
+    { name: "Orange", value: "#F97316" },
+    { name: "Red", value: "#EF4444" },
+    { name: "Pink", value: "#EC4899" },
+    { name: "Indigo", value: "#6366F1" },
+    { name: "Teal", value: "#14B8A6" },
+  ];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    
+    onSave({
+      id: uuidv4(),
+      name: name.trim(),
+      color,
+    });
+    
+    onClose();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="category-name">Category Name</Label>
+        <Input
+          id="category-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1"
+          placeholder="Enter category name"
+          autoFocus
+        />
+      </div>
+      
+      <div>
+        <Label>Color</Label>
+        <div className="grid grid-cols-3 gap-2 mt-1">
+          {colors.map((colorOption) => (
+            <div
+              key={colorOption.value}
+              className={`flex items-center justify-center p-2 rounded-md cursor-pointer border-2 transition-all ${
+                color === colorOption.value ? "border-primary" : "border-transparent"
+              }`}
+              style={{ backgroundColor: `${colorOption.value}22` }}
+              onClick={() => setColor(colorOption.value)}
+            >
+              <div
+                className="w-4 h-4 rounded-full mr-1.5"
+                style={{ backgroundColor: colorOption.value }}
+              />
+              <span className="text-xs truncate max-w-[70px]">{colorOption.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <div className="flex justify-end space-x-2 pt-2">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!name.trim()}>
+          Save
+        </Button>
+      </div>
+    </form>
   );
 };
 

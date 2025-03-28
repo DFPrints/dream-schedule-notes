@@ -16,13 +16,15 @@ const Layout = ({ children }: LayoutProps) => {
   const [showAds, setShowAds] = useState(true);
   const isMobile = useIsMobile();
   const [isSmallerScreen, setIsSmallerScreen] = useState(false);
+  const [isVerySmallScreen, setIsVerySmallScreen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     
-    // Check for smaller screens (iPhone SE, small Android phones)
+    // Check for screen sizes to provide better support across all devices
     const checkScreenSize = () => {
       setIsSmallerScreen(window.innerWidth < 360 || window.innerHeight < 640);
+      setIsVerySmallScreen(window.innerWidth < 340 || window.innerHeight < 600);
     };
     
     checkScreenSize();
@@ -49,8 +51,10 @@ const Layout = ({ children }: LayoutProps) => {
 
   // For debugging
   useEffect(() => {
-    console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds, 'isSmallerScreen:', isSmallerScreen);
-  }, [isMobile, showAds, isSmallerScreen]);
+    console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds, 
+                'isSmallerScreen:', isSmallerScreen, 
+                'isVerySmallScreen:', isVerySmallScreen);
+  }, [isMobile, showAds, isSmallerScreen, isVerySmallScreen]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -74,7 +78,10 @@ const Layout = ({ children }: LayoutProps) => {
       <nav className="fixed bottom-0 left-0 right-0 z-50">
         <div className="max-w-5xl mx-auto">
           <div className="glass-morphism rounded-t-2xl mx-4 mb-0">
-            <div className="flex justify-around items-center h-16 px-2">
+            <div className={cn(
+              "flex justify-around items-center px-2", 
+              isVerySmallScreen ? "h-14" : "h-16"
+            )}>
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -82,22 +89,23 @@ const Layout = ({ children }: LayoutProps) => {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center py-2 rounded-full transition-all duration-300',
-                      isSmallerScreen ? 'w-12' : 'w-16',
+                      "flex flex-col items-center justify-center py-2 rounded-full transition-all duration-300",
+                      isVerySmallScreen ? "w-10" : isSmallerScreen ? "w-12" : "w-16",
                       isActive 
-                        ? 'text-primary scale-110' 
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? "text-primary scale-110" 
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <item.icon className={cn(
-                      'mb-1 transition-transform',
-                      isSmallerScreen ? 'w-4 h-4' : 'w-5 h-5',
-                      isActive && 'animate-scale-in'
+                      "mb-1 transition-transform",
+                      isVerySmallScreen ? "w-3.5 h-3.5" : isSmallerScreen ? "w-4 h-4" : "w-5 h-5",
+                      isActive && "animate-scale-in"
                     )} />
-                    {!isSmallerScreen && (
+                    {!isVerySmallScreen && (
                       <span className={cn(
-                        'text-xs font-medium transition-opacity',
-                        isActive ? 'opacity-100' : 'opacity-80'
+                        "transition-opacity",
+                        isSmallerScreen ? "text-[10px]" : "text-xs font-medium",
+                        isActive ? "opacity-100" : "opacity-80"
                       )}>
                         {item.name}
                       </span>

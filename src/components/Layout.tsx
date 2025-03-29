@@ -17,6 +17,8 @@ const Layout = ({ children }: LayoutProps) => {
   const isMobile = useIsMobile();
   const [isSmallerScreen, setIsSmallerScreen] = useState(false);
   const [isVerySmallScreen, setIsVerySmallScreen] = useState(false);
+  const [hasWakeLock, setHasWakeLock] = useState(false);
+  const [wakeLock, setWakeLock] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -43,18 +45,77 @@ const Layout = ({ children }: LayoutProps) => {
     } catch (error) {
       console.error("Error loading ad settings:", error);
     }
+
+    // Try to acquire wake lock for timers and stopwatch pages
+    const acquireWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          const wl = await (navigator as any).wakeLock.request('screen');
+          setWakeLock(wl);
+          setHasWakeLock(true);
+          console.log('Wake Lock acquired');
+          
+          wl.addEventListener('release', () => {
+            setHasWakeLock(false);
+            console.log('Wake Lock released');
+          });
+        } catch (err) {
+          console.error(`Wake Lock error: ${err}`);
+        }
+      } else {
+        console.log('Wake Lock API not supported');
+      }
+    };
+
+    // Acquire wake lock for timer and stopwatch pages
+    if (location.pathname === '/timer' || location.pathname === '/stopwatch') {
+      acquireWakeLock();
+    }
     
     return () => {
       window.removeEventListener('resize', checkScreenSize);
+      
+      // Release wake lock if we had one
+      if (wakeLock) {
+        wakeLock.release().then(() => {
+          console.log('Wake Lock released on cleanup');
+        });
+      }
     };
-  }, []);
+  }, [location.pathname]);
+
+  // Re-acquire wake lock when visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && 
+          (location.pathname === '/timer' || location.pathname === '/stopwatch') && 
+          !hasWakeLock && 
+          'wakeLock' in navigator) {
+        try {
+          const wl = await (navigator as any).wakeLock.request('screen');
+          setWakeLock(wl);
+          setHasWakeLock(true);
+          console.log('Wake Lock re-acquired after visibility change');
+        } catch (err) {
+          console.error(`Wake Lock error: ${err}`);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [location.pathname, hasWakeLock]);
 
   // For debugging
   useEffect(() => {
     console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds, 
                 'isSmallerScreen:', isSmallerScreen, 
-                'isVerySmallScreen:', isVerySmallScreen);
-  }, [isMobile, showAds, isSmallerScreen, isVerySmallScreen]);
+                'isVerySmallScreen:', isVerySmallScreen,
+                'hasWakeLock:', hasWakeLock);
+  }, [isMobile, showAds, isSmallerScreen, isVerySmallScreen, hasWakeLock]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },

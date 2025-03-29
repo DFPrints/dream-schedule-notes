@@ -24,7 +24,7 @@ export const useBackgroundTimer = (
   const pausedAtRef = useRef<number>(0);
   const lastTickRef = useRef<number>(Date.now());
   
-  // Save timer state to localStorage
+  // Save timer state to localStorage with timestamp for background tracking
   const saveState = () => {
     try {
       const state = {
@@ -33,7 +33,7 @@ export const useBackgroundTimer = (
         isPaused,
         startTime: startTimeRef.current,
         pausedAt: pausedAtRef.current,
-        lastTick: lastTickRef.current,
+        lastTick: Date.now(), // Always use the current time when saving
         initialTime,
         isCountdown,
         timestamp: Date.now()
@@ -70,6 +70,7 @@ export const useBackgroundTimer = (
               currentTime = Math.max(0, state.time - elapsed);
               if (currentTime === 0) {
                 setIsComplete(true);
+                setIsRunning(false);
               }
             } else {
               currentTime = state.time + elapsed;
@@ -95,9 +96,9 @@ export const useBackgroundTimer = (
       const tick = () => {
         const now = Date.now();
         const elapsed = Math.floor((now - lastTickRef.current) / 1000);
-        lastTickRef.current = now;
-        
         if (elapsed > 0) {
+          lastTickRef.current = now;
+          
           setTime(prevTime => {
             if (isCountdown) {
               const newTime = Math.max(0, prevTime - elapsed);
@@ -111,8 +112,14 @@ export const useBackgroundTimer = (
             }
           });
         }
+        
+        // Save state periodically (every 5 seconds) to ensure background tracking works
+        if (now - lastTickRef.current > 5000) {
+          saveState();
+        }
       };
       
+      // Use setInterval for consistent ticking
       intervalRef.current = window.setInterval(tick, 1000);
       
       // Also save the current state
@@ -164,10 +171,15 @@ export const useBackgroundTimer = (
       }
     };
     
+    // Listen for visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for beforeunload to save state when app is closed
+    window.addEventListener('beforeunload', saveState);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', saveState);
     };
   }, [isRunning, isPaused, isCountdown]);
   

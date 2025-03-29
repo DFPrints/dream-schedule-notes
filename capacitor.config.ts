@@ -19,6 +19,18 @@ const config: CapacitorConfig = {
         ios: 'ca-app-pub-3940256099942544~1458002511'       // Test AdMob app ID for iOS
       }
     }
+  },
+  // Add iOS background mode capabilities
+  ios: {
+    backgroundColor: "#ffffff",
+    contentInset: "always",
+    preferredContentMode: "mobile",
+    scheme: "app",
+    backgroundAudio: true
+  },
+  // Add Android background support
+  android: {
+    backgroundColor: "#ffffff"
   }
 };
 

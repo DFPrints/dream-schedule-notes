@@ -1,10 +1,10 @@
-
 import { useLocation, Link } from 'react-router-dom';
 import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import AdMobBanner from './AdMobBanner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/components/ui/use-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,11 +19,65 @@ const Layout = ({ children }: LayoutProps) => {
   const [isVerySmallScreen, setIsVerySmallScreen] = useState(false);
   const [hasWakeLock, setHasWakeLock] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
+  const [hasAskedPermissions, setHasAskedPermissions] = useState(false);
+
+  const audioRef = useState<HTMLAudioElement | null>(null);
+
+  const setupBackgroundAudio = () => {
+    try {
+      if (!audioRef[0]) {
+        const audio = new Audio();
+        audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        audio.loop = true;
+        audio.volume = 0.001;
+        audio.muted = true;
+        
+        if (location.pathname === '/timer' || location.pathname === '/stopwatch') {
+          audio.muted = false;
+          audio.play().catch(err => {
+            console.error('Background audio play failed:', err);
+          });
+        }
+        
+        audioRef[0] = audio;
+      }
+    } catch (error) {
+      console.error('Error setting up background audio:', error);
+    }
+  };
+
+  const requestPermissions = async () => {
+    if (!isMobile || hasAskedPermissions) return;
+    
+    try {
+      if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        console.log('Notification permission:', permission);
+      }
+      
+      if ('wakeLock' in navigator) {
+        try {
+          await acquireWakeLock();
+        } catch (err) {
+          console.error('Wake lock request failed:', err);
+        }
+      }
+      
+      setHasAskedPermissions(true);
+      
+      toast({
+        title: "Permissions Setup",
+        description: "App permissions have been configured for background operation"
+      });
+      
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
     
-    // Check for screen sizes to provide better support across all devices
     const checkScreenSize = () => {
       setIsSmallerScreen(window.innerWidth < 360 || window.innerHeight < 640);
       setIsVerySmallScreen(window.innerWidth < 340 || window.innerHeight < 600);
@@ -32,7 +86,6 @@ const Layout = ({ children }: LayoutProps) => {
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     
-    // Load ad setting from localStorage
     try {
       const savedSettings = localStorage.getItem('manifestAppSettings');
       if (savedSettings) {
@@ -46,7 +99,12 @@ const Layout = ({ children }: LayoutProps) => {
       console.error("Error loading ad settings:", error);
     }
 
-    // Try to acquire wake lock for timers and stopwatch pages
+    setupBackgroundAudio();
+    
+    if (isMobile && !hasAskedPermissions) {
+      requestPermissions();
+    }
+
     const acquireWakeLock = async () => {
       if ('wakeLock' in navigator) {
         try {
@@ -67,7 +125,6 @@ const Layout = ({ children }: LayoutProps) => {
       }
     };
 
-    // Acquire wake lock for timer and stopwatch pages
     if (location.pathname === '/timer' || location.pathname === '/stopwatch') {
       acquireWakeLock();
     }
@@ -75,16 +132,20 @@ const Layout = ({ children }: LayoutProps) => {
     return () => {
       window.removeEventListener('resize', checkScreenSize);
       
-      // Release wake lock if we had one
       if (wakeLock) {
         wakeLock.release().then(() => {
           console.log('Wake Lock released on cleanup');
         });
       }
+      
+      if (audioRef[0]) {
+        audioRef[0].pause();
+        audioRef[0].src = '';
+        audioRef[0] = null;
+      }
     };
-  }, [location.pathname]);
+  }, [location.pathname, isMobile, hasAskedPermissions]);
 
-  // Re-acquire wake lock when visibility changes
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && 
@@ -100,6 +161,15 @@ const Layout = ({ children }: LayoutProps) => {
           console.error(`Wake Lock error: ${err}`);
         }
       }
+      
+      if (document.visibilityState === 'visible' && 
+          (location.pathname === '/timer' || location.pathname === '/stopwatch') && 
+          audioRef[0]) {
+        audioRef[0].muted = false;
+        audioRef[0].play().catch(err => {
+          console.error('Failed to resume background audio:', err);
+        });
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -109,13 +179,28 @@ const Layout = ({ children }: LayoutProps) => {
     };
   }, [location.pathname, hasWakeLock]);
 
-  // For debugging
+  useEffect(() => {
+    if (location.pathname === '/timer' || location.pathname === '/stopwatch') {
+      if (audioRef[0]) {
+        audioRef[0].muted = false;
+        audioRef[0].play().catch(err => {
+          console.error('Failed to play background audio on route change:', err);
+        });
+      }
+    } else {
+      if (audioRef[0]) {
+        audioRef[0].muted = true;
+      }
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     console.log('Layout render - isMobile:', isMobile, 'showAds:', showAds, 
                 'isSmallerScreen:', isSmallerScreen, 
                 'isVerySmallScreen:', isVerySmallScreen,
-                'hasWakeLock:', hasWakeLock);
-  }, [isMobile, showAds, isSmallerScreen, isVerySmallScreen, hasWakeLock]);
+                'hasWakeLock:', hasWakeLock,
+                'hasAskedPermissions:', hasAskedPermissions);
+  }, [isMobile, showAds, isSmallerScreen, isVerySmallScreen, hasWakeLock, hasAskedPermissions]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -182,7 +267,6 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </nav>
       
-      {/* AdMob Banner */}
       {isMobile && showAds && (
         <>
           <div className="fixed bottom-16 left-0 w-full text-center text-xs bg-yellow-100 text-black py-1 z-40">

@@ -18,6 +18,11 @@ const config: CapacitorConfig = {
         android: 'ca-app-pub-3940256099942544~3347511713',  // Test AdMob app ID for Android
         ios: 'ca-app-pub-3940256099942544~1458002511'       // Test AdMob app ID for iOS
       }
+    },
+    LocalNotifications: {
+      smallIcon: "ic_stat_icon_config_sample",
+      iconColor: "#488AFF",
+      sound: "beep.wav"
     }
   },
   // Add iOS background mode capabilities
@@ -26,11 +31,15 @@ const config: CapacitorConfig = {
     contentInset: "always",
     preferredContentMode: "mobile",
     scheme: "app",
-    backgroundAudio: true
+    backgroundAudio: true,
+    overrideUserInterfaceStyle: "light"
   },
   // Add Android background support
   android: {
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: true
   }
 };
 

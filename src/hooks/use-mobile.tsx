@@ -3,27 +3,25 @@ import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
 
-// Add proper typing for Capacitor
-interface CapacitorGlobal {
-  getPlatform: () => string;
-  isNativePlatform: () => boolean;
-  [key: string]: any;
+// Add this interface to properly type window.Capacitor
+interface Window {
+  Capacitor?: any;
 }
 
 declare global {
   interface Window {
-    Capacitor?: CapacitorGlobal;
+    Capacitor?: any;
   }
 }
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean>(false);
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
   React.useEffect(() => {
     // Function to detect if we're on a mobile device
     const checkMobile = () => {
-      // Check for Capacitor (most definitive way to detect mobile)
-      const isCapacitorApp = typeof window !== 'undefined' && window.Capacitor !== undefined;
+      // Check for Capacitor
+      const isCapacitorApp = typeof window !== 'undefined' && 'Capacitor' in window;
       
       // Use both screen size and user agent to more reliably detect mobile devices
       const isMobileBySize = window.innerWidth < MOBILE_BREAKPOINT;
@@ -47,20 +45,20 @@ export function useIsMobile() {
     // Initial check
     setIsMobile(checkMobile());
     
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
     const onChange = () => {
       setIsMobile(checkMobile());
-    };
+    }
     
     // Listen for screen size changes
-    mql.addEventListener("change", onChange);
-    window.addEventListener("resize", onChange);
+    mql.addEventListener("change", onChange)
+    window.addEventListener("resize", onChange)
     
     return () => {
-      mql.removeEventListener("change", onChange);
-      window.removeEventListener("resize", onChange);
-    };
-  }, []);
+      mql.removeEventListener("change", onChange)
+      window.removeEventListener("resize", onChange)
+    }
+  }, [])
 
-  return isMobile;
+  return !!isMobile
 }

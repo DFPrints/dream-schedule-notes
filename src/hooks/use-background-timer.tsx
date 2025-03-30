@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 
 /**
@@ -25,12 +24,10 @@ export const useBackgroundTimer = (
   const lastTickRef = useRef<number>(Date.now());
   const requestAnimationFrameRef = useRef<number | null>(null);
   const storageKeyRef = useRef<string>(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_${Date.now()}`);
-  const isVisibleRef = useRef<boolean>(true);
   
   useEffect(() => {
     storageKeyRef.current = `background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_${Date.now()}`;
     
-    // Clean up old timers
     const cleanup = () => {
       const previousKeys = Object.keys(localStorage).filter(key => 
         key.startsWith(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_`) && 
@@ -68,99 +65,71 @@ export const useBackgroundTimer = (
       
       if (isRunning || isPaused) {
         localStorage.setItem(storageKeyRef.current, JSON.stringify(state));
-        // Also store in sessionStorage for tab switching
-        sessionStorage.setItem(`current_timer_state`, JSON.stringify(state));
       } else {
         localStorage.removeItem(storageKeyRef.current);
-        sessionStorage.removeItem(`current_timer_state`);
       }
     } catch (error) {
       console.error('Error saving timer state:', error);
     }
   };
   
-  // Load state from storage on initialization
   useEffect(() => {
-    let loadedState = false;
+    const keys = Object.keys(localStorage).filter(key => 
+      key.startsWith(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_`)
+    );
     
-    // Try to load from sessionStorage first (for tab switching)
-    try {
-      const currentState = sessionStorage.getItem(`current_timer_state`);
-      if (currentState) {
-        const state = JSON.parse(currentState);
-        if (state.isCountdown === isCountdown) {
-          loadState(state);
-          loadedState = true;
+    if (keys.length > 0) {
+      keys.sort((a, b) => {
+        try {
+          const stateA = JSON.parse(localStorage.getItem(a) || '{}');
+          const stateB = JSON.parse(localStorage.getItem(b) || '{}');
+          return (stateB.timestamp || 0) - (stateA.timestamp || 0);
+        } catch {
+          return 0;
         }
-      }
-    } catch (error) {
-      console.error('Error loading timer state from sessionStorage:', error);
-    }
-    
-    // If nothing in sessionStorage, try localStorage (for app restarts)
-    if (!loadedState) {
-      const keys = Object.keys(localStorage).filter(key => 
-        key.startsWith(`background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_`)
-      );
+      });
       
-      if (keys.length > 0) {
-        keys.sort((a, b) => {
-          try {
-            const stateA = JSON.parse(localStorage.getItem(a) || '{}');
-            const stateB = JSON.parse(localStorage.getItem(b) || '{}');
-            return (stateB.timestamp || 0) - (stateA.timestamp || 0);
-          } catch {
-            return 0;
-          }
-        });
+      const savedState = localStorage.getItem(keys[0]);
+      
+      if (savedState) {
+        const state = JSON.parse(savedState);
         
-        const savedState = localStorage.getItem(keys[0]);
-        
-        if (savedState) {
-          const state = JSON.parse(savedState);
+        if (state.isCountdown === isCountdown) {
+          storageKeyRef.current = keys[0];
           
-          if (state.isCountdown === isCountdown) {
-            loadState(state);
+          let currentTime = state.time;
+          
+          if (state.isRunning && !state.isPaused) {
+            const now = Date.now();
+            const elapsed = Math.floor((now - state.lastTick) / 1000);
+            
+            if (isCountdown) {
+              currentTime = Math.max(0, state.time - elapsed);
+              if (currentTime === 0) {
+                setIsComplete(true);
+                setIsRunning(false);
+              }
+            } else {
+              currentTime = state.time + elapsed;
+            }
           }
+          
+          setTime(currentTime);
+          setIsRunning(state.isRunning);
+          setIsPaused(state.isPaused);
+          startTimeRef.current = state.startTime;
+          pausedAtRef.current = state.pausedAt;
+          lastTickRef.current = Date.now();
+          
+          saveState();
         }
       }
     }
   }, [isCountdown]);
   
-  const loadState = (state: any) => {
-    storageKeyRef.current = `background_timer_${isCountdown ? 'countdown' : 'stopwatch'}_${state.timestamp || Date.now()}`;
-    
-    let currentTime = state.time;
-    
-    if (state.isRunning && !state.isPaused) {
-      const now = Date.now();
-      const elapsed = Math.floor((now - state.lastTick) / 1000);
-      
-      if (isCountdown) {
-        currentTime = Math.max(0, state.time - elapsed);
-        if (currentTime === 0) {
-          setIsComplete(true);
-          setIsRunning(false);
-        }
-      } else {
-        currentTime = state.time + elapsed;
-      }
-    }
-    
-    setTime(currentTime);
-    setIsRunning(state.isRunning);
-    setIsPaused(state.isPaused);
-    startTimeRef.current = state.startTime;
-    pausedAtRef.current = state.pausedAt;
-    lastTickRef.current = Date.now();
-    
-    saveState();
-  };
-  
-  // Setup animation frame for smooth updates
   useEffect(() => {
     const animationFrame = () => {
-      if (isRunning && !isPaused && isVisibleRef.current) {
+      if (isRunning && !isPaused) {
         const now = Date.now();
         const elapsed = (now - lastTickRef.current) / 1000;
         
@@ -181,6 +150,10 @@ export const useBackgroundTimer = (
           });
           
           lastTickRef.current = now;
+          
+          if (now - lastTickRef.current > 5000) {
+            saveState();
+          }
         }
         
         if (requestAnimationFrameRef.current) {
@@ -191,7 +164,7 @@ export const useBackgroundTimer = (
       }
     };
     
-    if (isRunning && !isPaused && isVisibleRef.current) {
+    if (isRunning && !isPaused) {
       if (requestAnimationFrameRef.current) {
         cancelAnimationFrame(requestAnimationFrameRef.current);
       }
@@ -203,31 +176,27 @@ export const useBackgroundTimer = (
           saveState();
         }, 1000);
       }
-    }
-    
-    return () => {
-      if (requestAnimationFrameRef.current) {
-        cancelAnimationFrame(requestAnimationFrameRef.current);
-        requestAnimationFrameRef.current = null;
-      }
       
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+      return () => {
+        if (requestAnimationFrameRef.current) {
+          cancelAnimationFrame(requestAnimationFrameRef.current);
+          requestAnimationFrameRef.current = null;
+        }
+        
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    }
   }, [isRunning, isPaused, isCountdown]);
   
-  // Save state whenever important values change
   useEffect(() => {
     saveState();
   }, [time, isRunning, isPaused]);
   
-  // Handle visibility changes (tab switching, app minimizing)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      isVisibleRef.current = document.visibilityState === 'visible';
-      
       if (document.visibilityState === 'visible') {
         if (isRunning && !isPaused) {
           const now = Date.now();
@@ -292,23 +261,15 @@ export const useBackgroundTimer = (
       }
     };
     
-    // Listen for visibility changes and handle app close/reopen
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', saveState);
-    window.addEventListener('pagehide', saveState);
-    window.addEventListener('blur', saveState);
-    window.addEventListener('focus', handleVisibilityChange);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', saveState);
-      window.removeEventListener('pagehide', saveState);
-      window.removeEventListener('blur', saveState);
-      window.removeEventListener('focus', handleVisibilityChange);
     };
   }, [isRunning, isPaused, isCountdown]);
   
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
@@ -379,7 +340,6 @@ export const useBackgroundTimer = (
     }
     
     localStorage.removeItem(storageKeyRef.current);
-    sessionStorage.removeItem(`current_timer_state`);
   };
   
   return {

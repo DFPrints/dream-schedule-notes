@@ -1,25 +1,21 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlayIcon, PauseIcon, SquareIcon, TimerResetIcon, FlagIcon, Trophy, Share2Icon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useBackgroundTimer } from '@/hooks/use-background-timer';
 
 export const StopwatchComponent = () => {
-  const {
-    time: elapsedTime,
-    isRunning,
-    start: startTimer,
-    pause: pauseTimer,
-    reset: resetTimer
-  } = useBackgroundTimer(0, false, false);
-  
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [bestLap, setBestLap] = useState<number | null>(null);
   const [worstLap, setWorstLap] = useState<number | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [achievementUnlocked, setAchievementUnlocked] = useState<string | null>(null);
   
+  const startTimeRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const achievementsRef = useRef<Set<string>>(new Set());
   
   // Format time as HH:MM:SS.MS
@@ -40,9 +36,25 @@ export const StopwatchComponent = () => {
   // Start/Stop the stopwatch
   const toggleStopwatch = () => {
     if (!isRunning) {
-      startTimer();
+      // Start the stopwatch
+      if (startTimeRef.current === null) {
+        startTimeRef.current = Date.now() - elapsedTime;
+      } else {
+        startTimeRef.current = Date.now() - elapsedTime;
+      }
+      
+      intervalRef.current = window.setInterval(() => {
+        setElapsedTime(Date.now() - startTimeRef.current!);
+      }, 10);
+      
+      setIsRunning(true);
     } else {
-      pauseTimer();
+      // Stop the stopwatch
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setIsRunning(false);
       
       // Check if we should show achievements
       checkAchievements();
@@ -51,10 +63,17 @@ export const StopwatchComponent = () => {
   
   // Reset the stopwatch
   const resetStopwatch = () => {
-    resetTimer();
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    setIsRunning(false);
+    setElapsedTime(0);
     setLaps([]);
     setBestLap(null);
     setWorstLap(null);
+    startTimeRef.current = null;
     setShowShare(false);
   };
   
@@ -155,19 +174,28 @@ export const StopwatchComponent = () => {
     }
   };
   
-  // Check for achievements when time changes
+  // Clean up interval on unmount
   useEffect(() => {
-    if (isRunning && elapsedTime > 0) {
-      checkAchievements();
-    }
-  }, [elapsedTime, laps.length, isRunning]);
-
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+  
   // Show share option when stopwatch is stopped with time > 0
   useEffect(() => {
     if (!isRunning && elapsedTime > 0) {
       setShowShare(true);
     }
   }, [isRunning, elapsedTime]);
+  
+  // Check for achievements when time changes
+  useEffect(() => {
+    if (isRunning && elapsedTime > 0) {
+      checkAchievements();
+    }
+  }, [elapsedTime, laps.length]);
 
   const timeValues = formatTime(elapsedTime);
   

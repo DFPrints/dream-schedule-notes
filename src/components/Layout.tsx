@@ -1,3 +1,4 @@
+
 import { useLocation, Link } from 'react-router-dom';
 import { HomeIcon, TimerIcon, CalendarIcon, FileTextIcon, SettingsIcon, MicIcon, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -22,6 +23,27 @@ const Layout = ({ children }: LayoutProps) => {
   const [hasAskedPermissions, setHasAskedPermissions] = useState(false);
 
   const audioRef = useState<HTMLAudioElement | null>(null);
+
+  // Define the acquireWakeLock function here to fix the error
+  const acquireWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        const wl = await (navigator as any).wakeLock.request('screen');
+        setWakeLock(wl);
+        setHasWakeLock(true);
+        console.log('Wake Lock acquired');
+        
+        wl.addEventListener('release', () => {
+          setHasWakeLock(false);
+          console.log('Wake Lock released');
+        });
+      } catch (err) {
+        console.error(`Wake Lock error: ${err}`);
+      }
+    } else {
+      console.log('Wake Lock API not supported');
+    }
+  };
 
   const setupBackgroundAudio = () => {
     try {
@@ -104,26 +126,6 @@ const Layout = ({ children }: LayoutProps) => {
     if (isMobile && !hasAskedPermissions) {
       requestPermissions();
     }
-
-    const acquireWakeLock = async () => {
-      if ('wakeLock' in navigator) {
-        try {
-          const wl = await (navigator as any).wakeLock.request('screen');
-          setWakeLock(wl);
-          setHasWakeLock(true);
-          console.log('Wake Lock acquired');
-          
-          wl.addEventListener('release', () => {
-            setHasWakeLock(false);
-            console.log('Wake Lock released');
-          });
-        } catch (err) {
-          console.error(`Wake Lock error: ${err}`);
-        }
-      } else {
-        console.log('Wake Lock API not supported');
-      }
-    };
 
     if (location.pathname === '/timer' || location.pathname === '/stopwatch') {
       acquireWakeLock();

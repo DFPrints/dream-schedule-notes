@@ -3,6 +3,17 @@ import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
 
+// Add this interface to properly type window.Capacitor
+interface Window {
+  Capacitor?: any;
+}
+
+declare global {
+  interface Window {
+    Capacitor?: any;
+  }
+}
+
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
@@ -10,7 +21,7 @@ export function useIsMobile() {
     // Function to detect if we're on a mobile device
     const checkMobile = () => {
       // Check for Capacitor
-      const isCapacitorApp = window.Capacitor !== undefined;
+      const isCapacitorApp = typeof window !== 'undefined' && 'Capacitor' in window;
       
       // Use both screen size and user agent to more reliably detect mobile devices
       const isMobileBySize = window.innerWidth < MOBILE_BREAKPOINT;

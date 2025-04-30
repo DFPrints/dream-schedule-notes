@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -936,52 +935,4 @@ const VoiceMemo = ({ filterType = 'all', customCategories = [], onCreateCategory
                   </SelectTrigger>
                   <SelectContent>
                     {recordingCategories.map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                    {customCategories.map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="create_new" className="text-primary" onSelect={e => {
-                      e.preventDefault();
-                      onCreateCategory && onCreateCategory();
-                    }}>
-                      Create New
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex-1 ${selectedRecording.favorite ? 'bg-yellow-500/10' : ''}`}
-                  onClick={() => toggleFavorite(selectedRecording.id)}
-                >
-                  <BookmarkIcon className={`h-4 w-4 mr-1 ${selectedRecording.favorite ? 'text-yellow-500' : ''}`} />
-                  {selectedRecording.favorite ? 'Unfavorite' : 'Favorite'}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex-1 ${selectedRecording.archived ? 'bg-secondary' : ''}`}
-                  onClick={() => toggleArchive(selectedRecording.id)}
-                >
-                  <ArchiveIcon className="h-4 w-4 mr-1" />
-                  {selectedRecording.archived ? 'Unarchive' : 'Archive'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default VoiceMemo;
+                      <SelectItem key={category

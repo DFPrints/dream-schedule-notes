@@ -494,7 +494,7 @@ const VoiceMemoPage = () => {
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {CATEGORIES.map(category => (
                         <SelectItem key={category.name} value={category.name}>
                           <div className="flex items-center">
@@ -566,7 +566,7 @@ const VoiceMemoPage = () => {
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {CATEGORIES.map(category => (
                       <SelectItem key={category.name} value={category.name}>
                         <div className="flex items-center">

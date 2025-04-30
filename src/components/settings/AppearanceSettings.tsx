@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MoonIcon, SunIcon, LanguagesIcon, Clock, EyeOffIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AppearanceSettingsProps {
   settings: {
@@ -61,16 +62,20 @@ const AppearanceSettings = ({
             </div>
           </div>
           <div className="w-32">
-            <select 
-              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+            <Select 
               value={settings.language}
-              onChange={(e) => onSettingChange('language', e.target.value)}
+              onValueChange={(value) => onSettingChange('language', value)}
             >
-              <option value="en">English</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
